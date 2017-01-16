@@ -12,14 +12,17 @@ class HID {
     static int hid_mouse(Shell.Interactive sh, String dev, byte... offset) {
         if (offset.length > 4)
             throw new IllegalArgumentException("Your mouse can only move in two dimensions");
+        // for some odd reason, 4-byte padding is required
         byte[] buf = new byte[8];
         System.arraycopy(offset, 0, buf, 0, offset.length);
         return write_bytes(sh, dev, buf);
     }
 
+
     static int hid_keyboard(Shell.Interactive sh, String dev, byte... keys) {
         if (keys.length > 8)
             throw new IllegalArgumentException("Cannot send more than 7 keys");
+        // for some odd reason, every odd byte has to be blank
         byte[] buf = new byte[16];
         for (int i = 0; i < keys.length; i++) {
             buf[2 * i] = keys[i];
@@ -27,17 +30,19 @@ class HID {
         return write_bytes(sh, dev, buf);
     }
 
+    // TODO read state of NUM_LOCK, CAPS_LOCK, and SCROLL_LOCK by reading /dev/hidg0
+    // lol you can create a serial line by flashing the num and caps lights, probably 10 baud though
+
     private static int write_bytes(Shell.Interactive sh, String dev, byte[] arr) {
-        String bt = toShortString(arr);
+        String bt = escapeBytes(arr);
         final Integer[] err = {-1};
         try {
+            // run echo command to write to device as root
             final CountDownLatch latch = new CountDownLatch(1);
             String c = String.format("echo -n -e \"%s\" > %s", bt, dev);
-//            Log.d(MainActivity.TAG, c);
             sh.addCommand(c, 0, new Shell.OnCommandLineListener() {
                 @Override
                 public void onLine(String line) {
-
                 }
 
                 @Override
@@ -54,7 +59,14 @@ class HID {
         return err[0];
     }
 
-    private static String toShortString(byte[] arr) {
+    /**
+     * Escapes a byte array into a string
+     * ex. [0x0, 0x4, 0x4] => "\x00\x04\x04"
+     *
+     * @param arr Byte array to escape
+     * @return Escaped byte array as string
+     */
+    private static String escapeBytes(byte[] arr) {
         StringBuilder sb = new StringBuilder();
         for (byte b : arr) {
             sb.append(String.format("\\x%02x", b));
