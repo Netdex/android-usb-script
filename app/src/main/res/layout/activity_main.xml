@@ -10,19 +10,8 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="cf.netdex.hidfuzzer.MainActivity">
 
-    <TextView
-        android:text="Warning: Will destroy any computer this phone is plugged into!"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/textView"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginTop="16dp" />
-
     <ToggleButton
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
         android:id="@+id/btnPoll"
         android:textOn="@string/fuzzer_enabled"
         android:textOff="@string/fuzzer_disabled"
@@ -31,14 +20,30 @@
         android:layout_alignParentStart="true"
         android:layout_marginTop="19dp"
         android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true" />
+        android:layout_alignParentEnd="true"
+        android:layout_height="wrap_content"
+        android:elegantTextHeight="false"
+        android:textSize="36sp"
+        android:padding="50sp" />
 
     <TextView
         android:text="STOPPED"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/txtStatus"
+        android:textAppearance="@android:style/TextAppearance.Material.Subhead"
         android:layout_below="@+id/btnPoll"
         android:layout_alignParentRight="true"
         android:layout_alignParentEnd="true" />
+
+    <TextView
+        android:text="Warning: Will nuke attached computer!"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/textView"
+        android:layout_marginTop="12dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
 </RelativeLayout>
