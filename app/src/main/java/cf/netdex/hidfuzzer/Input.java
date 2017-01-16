@@ -1,7 +1,5 @@
 package cf.netdex.hidfuzzer;
 
-import java.util.Random;
-
 /**
  * Created by netdex on 1/15/2017.
  */

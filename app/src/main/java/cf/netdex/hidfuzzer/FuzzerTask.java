@@ -2,6 +2,8 @@ package cf.netdex.hidfuzzer;
 
 import android.content.Context;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.List;
@@ -14,18 +16,19 @@ import eu.chainfire.libsuperuser.Shell;
  * Created by netdex on 1/15/2017.
  */
 
-public class FuzzerTask extends AsyncTask<Void, String, Void> {
+class FuzzerTask extends AsyncTask<Void, FuzzerTask.FuzzState, Void> {
 
     private Context mContext;
 
-    public FuzzerTask(Context context) {
+    FuzzerTask(Context context) {
         mContext = context;
     }
 
     @Override
     protected Void doInBackground(Void... params) {
-        final CountDownLatch latch = new CountDownLatch(1);
+        publishProgress(FuzzState.STOPPED);
 
+        final CountDownLatch latch = new CountDownLatch(1);
         final boolean[] root = new boolean[1];
         Shell.Interactive sh = new Shell.Builder()
                 .useSU()
@@ -36,7 +39,7 @@ public class FuzzerTask extends AsyncTask<Void, String, Void> {
                     @Override
                     public void onCommandResult(int commandCode, int exitCode, List<String> output) {
                         if (exitCode != Shell.OnCommandResultListener.SHELL_RUNNING) {
-                            publishProgress("Failed to open SU");
+                            toast("Failed to open SU");
                             root[0] = false;
                         } else {
                             root[0] = true;
@@ -50,34 +53,58 @@ public class FuzzerTask extends AsyncTask<Void, String, Void> {
             if (!root[0]) return null;
 
             while (!isCancelled()) {
+                publishProgress(FuzzState.IDLE);
                 while (HID.hid_keyboard(sh, "/dev/hidg0", (byte) 0, Input.Keyboard.Key.VOLUME_UP.code) != 0) {
                     Thread.sleep(1000);
                 }
-                publishProgress("Connected");
+                publishProgress(FuzzState.FUZZING);
+                toast("Connected");
                 byte[] kbuf = new byte[8];
                 byte[] mbuf = new byte[4];
                 int c = 0;
-                while (c == 0) {
+                while (c == 0 && !isCancelled()) {
                     r.nextBytes(kbuf);
                     r.nextBytes(mbuf);
                     c |= HID.hid_keyboard(sh, "/dev/hidg0", kbuf);
                     c |= HID.hid_mouse(sh, "/dev/hidg1", mbuf);
+//                    c |= HID.hid_mouse(sh, "/dev/hidg1", (byte) 0, (byte) 10);
 //                    Thread.sleep(1000);
                 }
-                publishProgress("Disconnected");
+                toast("Disconnected");
             }
         } catch (InterruptedException ignored) {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        sh.kill();
+        sh.close();
+        publishProgress(FuzzState.STOPPED);
         return null;
-
     }
 
     @Override
-    protected void onProgressUpdate(String... s) {
-        Toast.makeText(mContext, s[0], Toast.LENGTH_SHORT).show();
+    protected void onCancelled() {
+        onProgressUpdate(FuzzState.STOPPED);
     }
 
+    @Override
+    protected void onProgressUpdate(FuzzState... s) {
+
+    }
+
+    private void toast(final String s) {
+        Handler handler = new Handler(mContext.getMainLooper());
+        handler.post(new Runnable() {
+            public void run() {
+                Toast.makeText(mContext, s, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    enum FuzzState {
+        FUZZING,
+        IDLE,
+        STOPPED
+    }
 
 }

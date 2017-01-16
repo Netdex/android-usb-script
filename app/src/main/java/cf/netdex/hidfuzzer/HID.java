@@ -8,8 +8,8 @@ import eu.chainfire.libsuperuser.Shell;
  * Created by netdex on 1/15/2017.
  */
 
-public class HID {
-    public static int hid_mouse(Shell.Interactive sh, String dev, byte... offset) {
+class HID {
+    static int hid_mouse(Shell.Interactive sh, String dev, byte... offset) {
         if (offset.length > 4)
             throw new IllegalArgumentException("Your mouse can only move in two dimensions");
         byte[] buf = new byte[8];
@@ -17,7 +17,7 @@ public class HID {
         return write_bytes(sh, dev, buf);
     }
 
-    public static int hid_keyboard(Shell.Interactive sh, String dev, byte... keys) {
+    static int hid_keyboard(Shell.Interactive sh, String dev, byte... keys) {
         if (keys.length > 8)
             throw new IllegalArgumentException("Cannot send more than 7 keys");
         byte[] buf = new byte[16];
@@ -27,7 +27,7 @@ public class HID {
         return write_bytes(sh, dev, buf);
     }
 
-    public static int write_bytes(Shell.Interactive sh, String dev, byte[] arr) {
+    private static int write_bytes(Shell.Interactive sh, String dev, byte[] arr) {
         String bt = toShortString(arr);
         final Integer[] err = {-1};
         try {
