@@ -1,5 +1,8 @@
 <resources>
     <string name="app_name">HIDFuzzer</string>
-    <string name="fuzzer_disabled">FUCK UP MY SHIT</string>
-    <string name="fuzzer_enabled">HOLY SHIT STOP</string>
+
+    <string-array name="tasks_array">
+        <item>Test</item>
+        <item>Fuzzer</item>
+    </string-array>
 </resources>

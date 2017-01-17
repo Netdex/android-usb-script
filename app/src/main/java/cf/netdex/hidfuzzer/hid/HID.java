@@ -1,4 +1,6 @@
-package cf.netdex.hidfuzzer;
+package cf.netdex.hidfuzzer.hid;
+
+import android.util.Log;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -8,25 +10,48 @@ import eu.chainfire.libsuperuser.Shell;
  * Created by netdex on 1/15/2017.
  */
 
-class HID {
-    static int hid_mouse(Shell.Interactive sh, String dev, byte... offset) {
+public class HID {
+    /**
+     * A        B        C        D
+     * XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX
+     * <p>
+     * A: Mouse button mask
+     * B: Mouse X-offset
+     * C: Mouse Y-offset
+     * D: Mouse wheel offset
+     *
+     * @param sh     SU shell
+     * @param dev    Mouse device (/dev/hidg1)
+     * @param offset HID mouse bytes
+     * @return error code
+     */
+    public static int hid_mouse(Shell.Interactive sh, String dev, byte... offset) {
         if (offset.length > 4)
             throw new IllegalArgumentException("Your mouse can only move in two dimensions");
-        // for some odd reason, 4-byte padding is required
-        byte[] buf = new byte[8];
+        byte[] buf = new byte[4];
         System.arraycopy(offset, 0, buf, 0, offset.length);
         return write_bytes(sh, dev, buf);
     }
 
-
-    static int hid_keyboard(Shell.Interactive sh, String dev, byte... keys) {
-        if (keys.length > 8)
-            throw new IllegalArgumentException("Cannot send more than 7 keys");
-        // for some odd reason, every odd byte has to be blank
-        byte[] buf = new byte[16];
-        for (int i = 0; i < keys.length; i++) {
-            buf[2 * i] = keys[i];
-        }
+    /**
+     * A        B        C        D        E        F        G        H
+     * XXXXXXXX 00000000 XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX
+     * <p>
+     * A: Key modifier mask
+     * B: Reserved
+     * C: Key 1; D: Key 2; E: Key 3; F: Key 4; G: Key 5; H: Key 6;
+     *
+     * @param sh   SU shell
+     * @param dev  Keyboard device (/dev/hidg0)
+     * @param keys HID keyboard bytes
+     * @return error code
+     */
+    public static int hid_keyboard(Shell.Interactive sh, String dev, byte... keys) {
+        if (keys.length > 7)
+            throw new IllegalArgumentException("Cannot send more than 6 keys");
+        byte[] buf = new byte[8];
+        if (keys.length > 0) buf[0] = keys[0];
+        if (keys.length > 1) System.arraycopy(keys, 1, buf, 2, keys.length - 1);
         return write_bytes(sh, dev, buf);
     }
 
@@ -39,7 +64,8 @@ class HID {
         try {
             // run echo command to write to device as root
             final CountDownLatch latch = new CountDownLatch(1);
-            String c = String.format("echo -n -e \"%s\" > %s", bt, dev);
+            String c = "echo -n -e \"" + bt + "\" > " + dev;
+//            Log.d("A", c);
             sh.addCommand(c, 0, new Shell.OnCommandLineListener() {
                 @Override
                 public void onLine(String line) {
@@ -73,4 +99,6 @@ class HID {
         }
         return sb.toString();
     }
+
+
 }

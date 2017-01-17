@@ -10,32 +10,6 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="cf.netdex.hidfuzzer.MainActivity">
 
-    <ToggleButton
-        android:layout_width="wrap_content"
-        android:id="@+id/btnPoll"
-        android:textOn="@string/fuzzer_enabled"
-        android:textOff="@string/fuzzer_disabled"
-        android:layout_below="@+id/textView"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginTop="19dp"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true"
-        android:layout_height="wrap_content"
-        android:elegantTextHeight="false"
-        android:textSize="36sp"
-        android:padding="50sp" />
-
-    <TextView
-        android:text="STOPPED"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/txtStatus"
-        android:textAppearance="@android:style/TextAppearance.Material.Subhead"
-        android:layout_below="@+id/btnPoll"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true" />
-
     <TextView
         android:text="Warning: Will nuke attached computer!"
         android:layout_width="wrap_content"
@@ -43,6 +17,49 @@
         android:id="@+id/textView"
         android:layout_marginTop="12dp"
         android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:text="STOPPED"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/txtStatus"
+        android:layout_below="@+id/btnPoll"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
+
+    <ToggleButton
+        android:layout_width="wrap_content"
+        android:id="@+id/btnPoll"
+        android:textOn="Enabled"
+        android:textOff="Disabled"
+        android:layout_marginTop="18dp"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:checked="false"
+        android:layout_below="@+id/textView"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
+
+    <Spinner
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/spnTask"
+        android:entries="@array/tasks_array"
+        android:layout_below="@+id/textView2"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:text="Task"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/textView2"
+        android:layout_marginTop="29dp"
+        android:layout_below="@+id/txtStatus"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
 

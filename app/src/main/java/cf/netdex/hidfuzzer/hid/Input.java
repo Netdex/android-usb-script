@@ -1,4 +1,4 @@
-package cf.netdex.hidfuzzer;
+package cf.netdex.hidfuzzer.hid;
 
 /**
  * Created by netdex on 1/15/2017.
@@ -6,8 +6,8 @@ package cf.netdex.hidfuzzer;
 
 public class Input {
 
-    static class Mouse {
-        enum Buttons {
+    public static class Mouse {
+        public enum Buttons {
             BUTTON_LEFT(0x1),
             BUTTON_RIGHT(0x2),
             BUTTON_MIDDLE(0x4);
@@ -19,8 +19,8 @@ public class Input {
         }
     }
 
-    static class Keyboard {
-        enum ModifierMask {
+    public static class Keyboard {
+        public enum ModifierMask {
             LCTRL(0x1),
             LSHIFT(0x2),
             LALT(0x4),
@@ -37,7 +37,7 @@ public class Input {
             }
         }
 
-        enum Key {
+        public enum Key {
             A(0X04),
             B(0X05),
             C(0X06),
@@ -55,7 +55,7 @@ public class Input {
             O(0X12),
             P(0X13),
             Q(0X14),
-            RANDOM(0X15),
+            R(0X15),
             S(0X16),
             T(0X17),
             U(0X18),
