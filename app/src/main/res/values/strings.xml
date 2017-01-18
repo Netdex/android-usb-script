@@ -1,11 +1,3 @@
 <resources>
     <string name="app_name">HIDFuzzer</string>
-
-    <string-array name="tasks_array">
-        <item>Test</item>
-        <item>Wallpaper</item>
-        <item>Download</item>
-        <item>PowerShell</item>
-        <item>Fuzzer</item>
-    </string-array>
 </resources>

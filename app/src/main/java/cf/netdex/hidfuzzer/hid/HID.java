@@ -88,6 +88,8 @@ public class HID {
         return err[0];
     }
 
+    private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
+
     /**
      * Escapes a byte array into a string
      * ex. [0x0, 0x4, 0x4] => "\x00\x04\x04"
@@ -97,11 +99,15 @@ public class HID {
      */
     private static String escapeBytes(byte[] arr) {
         StringBuilder sb = new StringBuilder();
-        for (byte b : arr) {
-            sb.append(String.format("\\x%02x", b));
+        for ( int j = 0; j < arr.length; j++ ) {
+            int v = arr[j] & 0xFF;
+            sb.append("\\").append(hexArray[v >>> 4]).append(hexArray[v & 0x0F]);
         }
         return sb.toString();
     }
+
+
+
 
 
 }

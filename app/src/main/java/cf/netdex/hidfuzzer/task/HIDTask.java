@@ -32,8 +32,11 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
     private Shell.Interactive mSU;
     private HIDR mH;
 
-    public HIDTask(Context context) {
+    private String mDesc;
+
+    public HIDTask(Context context, String desc) {
         this.mContext = context;
+        this.mDesc = desc;
     }
 
     public Context getContext() {
@@ -47,6 +50,7 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
             mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
             mSU.addCommand("chmod 666 " + DEV_MOUSE);
             mH = new HIDR(mSU, DEV_KEYBOARD, DEV_MOUSE);
+            say("Description", mDesc);
             toast("Started " + this.getClass().getSimpleName());
             run();
             toast("Ended " + this.getClass().getSimpleName());
@@ -171,14 +175,14 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         return m_Text[0];
     }
 
-    void say(final String msg) {
+    void say(final String title, final String msg) {
         final CountDownLatch latch = new CountDownLatch(1);
 
         looper(new Runnable() {
             @Override
             public void run() {
                 AlertDialog.Builder alertDialog = new AlertDialog.Builder(mContext);
-                alertDialog.setTitle("Alert");
+                alertDialog.setTitle(title);
                 alertDialog.setMessage(msg);
                 alertDialog.setPositiveButton("OK",
                         new DialogInterface.OnClickListener() {

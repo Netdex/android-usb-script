@@ -17,7 +17,7 @@ import static cf.netdex.hidfuzzer.hid.Input.KB;
 
 public class DownloadTask extends HIDTask {
     public DownloadTask(Context context) {
-        super(context);
+        super(context, "Downloads and executes a given file. Requires admin account.");
     }
 
     @Override
@@ -27,7 +27,6 @@ public class DownloadTask extends HIDTask {
 
         final HIDR h = this.getHIDR();
 
-        say("Downloads and executes a given file. Requires admin account.");
         String file = ask("File to download?", "http://www.greyhathacker.net/tools/messbox.exe");
 
         while (!isCancelled()) {

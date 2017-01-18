@@ -15,7 +15,7 @@ import eu.chainfire.libsuperuser.Shell;
 public class FuzzerTask extends HIDTask {
 
     public FuzzerTask(Context context) {
-        super(context);
+        super(context, "Fuzzes the HID interface.");
     }
 
     @Override

@@ -10,7 +10,7 @@ import eu.chainfire.libsuperuser.Shell;
 
 /**
  * Wrapper for HID class for ease of usage
- *
+ * <p>
  * Created by netdex on 1/16/2017.
  */
 
@@ -35,7 +35,7 @@ public class HIDR {
         }
     }
 
-    public int test(){
+    public int test() {
         return hid_keyboard((byte) 0, Input.KB.K.VOLUME_UP.c);
     }
 
@@ -109,11 +109,9 @@ public class HIDR {
             boolean st = AP_MAP_SHIFT[(int) c];
             if (cd == -1)
                 throw new IllegalArgumentException("Given string contains illegal characters");
-            if (c == lc)
-                ec |= hid_keyboard();
+            if (c == lc) ec |= hid_keyboard();
             ec |= hid_keyboard(st ? Input.KB.M.LSHIFT.c : 0, cd);
-            if (d != 0)
-                delay(d);
+            if (d != 0) delay(d);
             lc = c;
         }
         ec |= hid_keyboard();

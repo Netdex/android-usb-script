@@ -15,7 +15,7 @@ import eu.chainfire.libsuperuser.Shell;
 public class TestTask extends HIDTask {
 
     public TestTask(Context context) {
-        super(context);
+        super(context, "Task for testing new functionality.");
     }
 
     @Override

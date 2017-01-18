@@ -14,7 +14,7 @@ import eu.chainfire.libsuperuser.Shell;
 
 public class WallpaperTask extends HIDTask {
     public WallpaperTask(Context context) {
-        super(context);
+        super(context, "Downloads and sets a given wallpaper.");
     }
 
     @Override
@@ -24,7 +24,6 @@ public class WallpaperTask extends HIDTask {
 
         final HIDR h = this.getHIDR();
 
-        say("Downloads and sets a given wallpaper.");
         String file = ask("Wallpaper file?", "http://i.imgur.com/v53KZfh.jpg");
         while (!isCancelled()) {
             publishProgress(RunState.IDLE);
