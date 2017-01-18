@@ -1,16 +1,21 @@
 package cf.netdex.hidfuzzer.task;
 
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.text.InputType;
 import android.util.Log;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import cf.netdex.hidfuzzer.MainActivity;
-import cf.netdex.hidfuzzer.util.Func;
+import cf.netdex.hidfuzzer.hid.HIDR;
+import cf.netdex.hidfuzzer.util.SUExecute;
 import eu.chainfire.libsuperuser.Shell;
 
 /**
@@ -23,11 +28,12 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
     static final String DEV_MOUSE = "/dev/hidg1";
 
     private Context mContext;
-    private Func<RunState> mUpdate;
 
-    public HIDTask(Context context, Func<RunState> update) {
+    private Shell.Interactive mSU;
+    private HIDR mH;
+
+    public HIDTask(Context context) {
         this.mContext = context;
-        this.mUpdate = update;
     }
 
     public Context getContext() {
@@ -36,25 +42,55 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
 
     @Override
     protected Void doInBackground(Void... params) {
-        publishProgress(RunState.STOPPED);
-        run();
-        publishProgress(RunState.STOPPED);
+        mSU = createSU();
+        if (mSU != null) {
+            mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
+            mSU.addCommand("chmod 666 " + DEV_MOUSE);
+            mH = new HIDR(mSU, DEV_KEYBOARD, DEV_MOUSE);
+            toast("Started " + this.getClass().getSimpleName());
+            run();
+            toast("Ended " + this.getClass().getSimpleName());
+        } else {
+            toast("Failed to get SU");
+        }
         return null;
+    }
+
+    @Override
+    public void onProgressUpdate(RunState... s) {
+        toast(this.getClass().getSimpleName() + ": " + s[0].name());
     }
 
     public abstract void run();
 
     @Override
-    protected void onProgressUpdate(RunState... s) {
-        mUpdate.run(s);
+    protected void onCancelled() {
+        cleanup();
     }
 
     @Override
-    protected void onCancelled() {
-        onProgressUpdate(RunState.STOPPED);
+    protected void onPostExecute(Void result) {
+        cleanup();
     }
 
-    Shell.Interactive getSU() {
+    public void cleanup() {
+        if (mH != null)
+            mH.getKeyboardLightListener().kill();
+        if (mSU != null) {
+            mSU.kill();
+            mSU.close();
+        }
+    }
+
+    public Shell.Interactive getSU() {
+        return mSU;
+    }
+
+    public HIDR getHIDR() {
+        return mH;
+    }
+
+    static Shell.Interactive createSU() {
         try {        // setup su shell
             final CountDownLatch latch = new CountDownLatch(1);
             final boolean[] root = new boolean[1];
@@ -85,17 +121,97 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
     }
 
     void toast(final String s) {
-        Handler handler = new Handler(this.getContext().getMainLooper());
-        handler.post(new Runnable() {
+        looper(new Runnable() {
             public void run() {
                 Toast.makeText(HIDTask.this.getContext(), s, Toast.LENGTH_SHORT).show();
             }
         });
     }
 
+    String ask(final String title){
+        return ask(title, "");
+    }
+
+    String ask(final String title, final String def) {
+        final String[] m_Text = new String[1];
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        looper(new Runnable() {
+            @Override
+            public void run() {
+                AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
+                builder.setTitle(title);
+
+                final EditText input = new EditText(mContext);
+                input.setInputType(InputType.TYPE_CLASS_TEXT);
+                input.setText(def);
+                builder.setView(input);
+
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        m_Text[0] = input.getText().toString();
+                        latch.countDown();
+                    }
+                });
+                builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface dialog) {
+                        latch.countDown();
+                    }
+                });
+                builder.setCancelable(false);
+                builder.show();
+            }
+        });
+        try {
+            latch.await();
+        } catch (InterruptedException ignored) {
+        }
+        return m_Text[0];
+    }
+
+    void say(final String msg) {
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        looper(new Runnable() {
+            @Override
+            public void run() {
+                AlertDialog.Builder alertDialog = new AlertDialog.Builder(mContext);
+                alertDialog.setTitle("Alert");
+                alertDialog.setMessage(msg);
+                alertDialog.setPositiveButton("OK",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                                latch.countDown();
+                            }
+                        });
+                alertDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface dialog) {
+                        latch.countDown();
+                    }
+                });
+                alertDialog.setCancelable(false);
+                alertDialog.show();
+            }
+        });
+        try {
+            latch.await();
+        } catch (InterruptedException ignored) {
+        }
+    }
+
+    private void looper(Runnable r) {
+        Handler handler = new Handler(this.getContext().getMainLooper());
+        handler.post(r);
+    }
+
     public enum RunState {
         RUNNING,
         IDLE,
-        STOPPED
+        STOPPED,
+        DONE
     }
 }

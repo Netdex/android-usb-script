@@ -2,15 +2,21 @@ package cf.netdex.hidfuzzer.hid;
 
 import android.util.Log;
 
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 
 import eu.chainfire.libsuperuser.Shell;
 
 /**
+ * Native communication with HID devices
+ *
  * Created by netdex on 1/15/2017.
  */
 
 public class HID {
+    private static byte[] mouse_buf = new byte[4];
+    private static byte[] keyboard_buf = new byte[8];
+
     /**
      * A        B        C        D
      * XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX
@@ -23,40 +29,37 @@ public class HID {
      * @param sh     SU shell
      * @param dev    Mouse device (/dev/hidg1)
      * @param offset HID mouse bytes
-     * @return error code
+     * @return error c
      */
     public static int hid_mouse(Shell.Interactive sh, String dev, byte... offset) {
         if (offset.length > 4)
             throw new IllegalArgumentException("Your mouse can only move in two dimensions");
-        byte[] buf = new byte[4];
-        System.arraycopy(offset, 0, buf, 0, offset.length);
-        return write_bytes(sh, dev, buf);
+        Arrays.fill(mouse_buf, (byte) 0);
+        System.arraycopy(offset, 0, mouse_buf, 0, offset.length);
+        return write_bytes(sh, dev, mouse_buf);
     }
 
     /**
      * A        B        C        D        E        F        G        H
      * XXXXXXXX 00000000 XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX
      * <p>
-     * A: Key modifier mask
+     * A: K modifier mask
      * B: Reserved
-     * C: Key 1; D: Key 2; E: Key 3; F: Key 4; G: Key 5; H: Key 6;
+     * C: K 1; D: K 2; E: K 3; F: K 4; G: K 5; H: K 6;
      *
      * @param sh   SU shell
-     * @param dev  Keyboard device (/dev/hidg0)
+     * @param dev  KB device (/dev/hidg0)
      * @param keys HID keyboard bytes
-     * @return error code
+     * @return error c
      */
     public static int hid_keyboard(Shell.Interactive sh, String dev, byte... keys) {
         if (keys.length > 7)
             throw new IllegalArgumentException("Cannot send more than 6 keys");
-        byte[] buf = new byte[8];
-        if (keys.length > 0) buf[0] = keys[0];
-        if (keys.length > 1) System.arraycopy(keys, 1, buf, 2, keys.length - 1);
-        return write_bytes(sh, dev, buf);
+        Arrays.fill(keyboard_buf, (byte) 0);
+        if (keys.length > 0) keyboard_buf[0] = keys[0];
+        if (keys.length > 1) System.arraycopy(keys, 1, keyboard_buf, 2, keys.length - 1);
+        return write_bytes(sh, dev, keyboard_buf);
     }
-
-    // TODO read state of NUM_LOCK, CAPS_LOCK, and SCROLL_LOCK by reading /dev/hidg0
-    // lol you can create a serial line by flashing the num and caps lights, probably 10 baud though
 
     private static int write_bytes(Shell.Interactive sh, String dev, byte[] arr) {
         String bt = escapeBytes(arr);

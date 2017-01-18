@@ -1,18 +1,17 @@
 package cf.netdex.hidfuzzer;
 
-import android.content.Context;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.CompoundButton;
 import android.widget.Spinner;
-import android.widget.TextView;
 import android.widget.ToggleButton;
 
-import cf.netdex.hidfuzzer.hid.HID;
+import cf.netdex.hidfuzzer.task.PowershellTask;
+import cf.netdex.hidfuzzer.task.DownloadTask;
+import cf.netdex.hidfuzzer.task.WallpaperTask;
 import cf.netdex.hidfuzzer.task.FuzzerTask;
 import cf.netdex.hidfuzzer.task.HIDTask;
 import cf.netdex.hidfuzzer.task.TestTask;
-import cf.netdex.hidfuzzer.util.Func;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -23,16 +22,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        final TextView txtStatus = (TextView) findViewById(R.id.txtStatus);
+
         final ToggleButton btnPoll = (ToggleButton) findViewById(R.id.btnPoll);
         final Spinner spnTask = (Spinner) findViewById(R.id.spnTask);
 
-        final Func<HIDTask.RunState> updatef = new Func<HIDTask.RunState>() {
-            @Override
-            public void run(HIDTask.RunState... s) {
-                txtStatus.setText(s[0].name());
-            }
-        };
         btnPoll.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -40,16 +33,25 @@ public class MainActivity extends AppCompatActivity {
                     String stask = (String) spnTask.getSelectedItem();
                     switch(stask){
                         case "Fuzzer":
-                            RUNNING_TASK = new FuzzerTask(MainActivity.this, updatef);
+                            RUNNING_TASK = new FuzzerTask(MainActivity.this);
                             break;
                         case "Test":
-                            RUNNING_TASK = new TestTask(MainActivity.this, updatef);
+                            RUNNING_TASK = new TestTask(MainActivity.this);
+                            break;
+                        case "Wallpaper":
+                            RUNNING_TASK = new WallpaperTask(MainActivity.this);
+                            break;
+                        case "Download":
+                            RUNNING_TASK = new DownloadTask(MainActivity.this);
+                            break;
+                        case "PowerShell":
+                            RUNNING_TASK = new PowershellTask(MainActivity.this);
                             break;
                     }
                     RUNNING_TASK.execute();
                 } else {
                     if (RUNNING_TASK != null)
-                        RUNNING_TASK.cancel(true);
+                        RUNNING_TASK.cancel(false);
                 }
             }
         });

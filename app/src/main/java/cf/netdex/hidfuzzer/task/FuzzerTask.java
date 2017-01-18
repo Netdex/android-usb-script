@@ -1,17 +1,11 @@
 package cf.netdex.hidfuzzer.task;
 
 import android.content.Context;
-import android.os.AsyncTask;
-import android.os.Handler;
-import android.widget.Toast;
 
-import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CountDownLatch;
 
 import cf.netdex.hidfuzzer.hid.HID;
 import cf.netdex.hidfuzzer.hid.Input;
-import cf.netdex.hidfuzzer.util.Func;
 import eu.chainfire.libsuperuser.Shell;
 
 /**
@@ -20,8 +14,8 @@ import eu.chainfire.libsuperuser.Shell;
 
 public class FuzzerTask extends HIDTask {
 
-    public FuzzerTask(Context context, Func<RunState> update) {
-        super(context, update);
+    public FuzzerTask(Context context) {
+        super(context);
     }
 
     @Override
@@ -33,11 +27,10 @@ public class FuzzerTask extends HIDTask {
             while (!isCancelled()) {
                 publishProgress(RunState.IDLE);
                 // poll until /dev/hidg0 is writable
-                while (HID.hid_keyboard(sh, DEV_KEYBOARD, (byte) 0, Input.Keyboard.Key.VOLUME_UP.code) != 0) {
+                while (!isCancelled() && HID.hid_keyboard(sh, DEV_KEYBOARD, (byte) 0, Input.KB.K.VOLUME_UP.c) != 0) {
                     Thread.sleep(1000);
                 }
                 publishProgress(RunState.RUNNING);
-                toast("Connected");
 
                 // fuzzing begins here
                 byte[] kbuf = new byte[7];
@@ -57,9 +50,6 @@ public class FuzzerTask extends HIDTask {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        // tidy up sh so no running tasks are left
-        sh.kill();
-        sh.close();
     }
 
 

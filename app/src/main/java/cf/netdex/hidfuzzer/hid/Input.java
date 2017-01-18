@@ -6,21 +6,21 @@ package cf.netdex.hidfuzzer.hid;
 
 public class Input {
 
-    public static class Mouse {
-        public enum Buttons {
+    public static class M {
+        public enum B {
             BUTTON_LEFT(0x1),
             BUTTON_RIGHT(0x2),
             BUTTON_MIDDLE(0x4);
             public byte code;
 
-            Buttons(int code) {
+            B(int code) {
                 this.code = (byte) code;
             }
         }
     }
 
-    public static class Keyboard {
-        public enum ModifierMask {
+    public static class KB {
+        public enum M {
             LCTRL(0x1),
             LSHIFT(0x2),
             LALT(0x4),
@@ -30,14 +30,14 @@ public class Input {
             RALT(0x40),
             RSUPER(0x80); // Windows key
 
-            public byte code;
+            public byte c;
 
-            ModifierMask(int code) {
-                this.code = (byte) code;
+            M(int c) {
+                this.c = (byte) c;
             }
         }
 
-        public enum Key {
+        public enum K {
             A(0X04),
             B(0X05),
             C(0X06),
@@ -180,10 +180,10 @@ public class Input {
             VOLUME_UP(0x80),
             VOLUME_DOWN(0x81);
 
-            public byte code;
+            public byte c;
 
-            Key(int code) {
-                this.code = (byte) code;
+            K(int c) {
+                this.c = (byte) c;
             }
         }
     }

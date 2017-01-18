@@ -20,15 +20,6 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
 
-    <TextView
-        android:text="STOPPED"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/txtStatus"
-        android:layout_below="@+id/btnPoll"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true" />
-
     <ToggleButton
         android:layout_width="wrap_content"
         android:id="@+id/btnPoll"
@@ -58,8 +49,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/textView2"
-        android:layout_marginTop="29dp"
-        android:layout_below="@+id/txtStatus"
+        android:layout_marginTop="12dp"
+        android:layout_below="@+id/btnPoll"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
 
