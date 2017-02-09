@@ -37,12 +37,14 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
 
     private String mDesc;
 
+    // TODO: remove hacky behavior for updating log view
     private ScrollView mScrollView;
     private TextView mLogView;
 
     public HIDTask(Context context, String desc) {
         this.mContext = context;
         this.mDesc = desc;
+        
         this.mLogView = (TextView) (((Activity) context).findViewById(R.id.txtLog));
         this.mScrollView = (ScrollView) (((Activity) context).findViewById(R.id.scrollview));
     }
@@ -86,7 +88,7 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         cleanup();
     }
 
-    public void cleanup() {
+    private void cleanup() {
         if (mH != null)
             mH.getKeyboardLightListener().kill();
         if (mSU != null) {
@@ -95,15 +97,15 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         }
     }
 
-    public Shell.Interactive getSU() {
+    Shell.Interactive getSU() {
         return mSU;
     }
 
-    public HIDR getHIDR() {
+    HIDR getHIDR() {
         return mH;
     }
 
-    static Shell.Interactive createSU() {
+    private static Shell.Interactive createSU() {
         try {
             final CountDownLatch latch = new CountDownLatch(1);
             final boolean[] root = new boolean[1];
@@ -142,7 +144,7 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         looper(new Runnable() {
             public void run() {
 //                Toast.makeText(HIDTask.this.getContext(), s, Toast.LENGTH_SHORT).show();
-                mLogView.setText(mLogView.getText() + "\n" + s);
+                mLogView.setText(mLogView.getText() + s + "\n");
                 mScrollView.post(new Runnable() {
                     @Override
                     public void run() {
