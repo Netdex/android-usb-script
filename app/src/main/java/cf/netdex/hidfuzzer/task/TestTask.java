@@ -28,7 +28,7 @@ public class TestTask extends HIDTask {
             public void run() {
                 h.getKeyboardLightListener().start();
                 while (!isCancelled()) {
-                    Log.d("A", String.format("%02x", h.getKeyboardLightListener().read()));
+                    log("KB LIGHT: " + String.format("%02x", h.getKeyboardLightListener().read()));
                 }
             }
         }.start();
@@ -43,11 +43,11 @@ public class TestTask extends HIDTask {
 
             int c = 0;
             while (c == 0 && !isCancelled()) {
-                c |= h.send_string("wow carol you're such a meme");
+                c |= h.send_string("the quick brown fox jumped over the lazy dog.");
                 c |= h.press_keys((byte) 0, Input.KB.K.ENTER.c);
                 h.delay(100);
             }
-            toast("Disconnected");
+            log("Disconnected");
         }
 
     }

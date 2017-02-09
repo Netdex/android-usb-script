@@ -1,5 +1,6 @@
 package cf.netdex.hidfuzzer.task;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -7,15 +8,17 @@ import android.os.AsyncTask;
 import android.os.Handler;
 import android.text.InputType;
 import android.util.Log;
+import android.view.View;
 import android.widget.EditText;
-import android.widget.Toast;
+import android.widget.ScrollView;
+import android.widget.TextView;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import cf.netdex.hidfuzzer.MainActivity;
+import cf.netdex.hidfuzzer.R;
 import cf.netdex.hidfuzzer.hid.HIDR;
-import cf.netdex.hidfuzzer.util.SUExecute;
 import eu.chainfire.libsuperuser.Shell;
 
 /**
@@ -34,9 +37,14 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
 
     private String mDesc;
 
+    private ScrollView mScrollView;
+    private TextView mLogView;
+
     public HIDTask(Context context, String desc) {
         this.mContext = context;
         this.mDesc = desc;
+        this.mLogView = (TextView) (((Activity) context).findViewById(R.id.txtLog));
+        this.mScrollView = (ScrollView) (((Activity) context).findViewById(R.id.scrollview));
     }
 
     public Context getContext() {
@@ -47,22 +55,23 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
     protected Void doInBackground(Void... params) {
         mSU = createSU();
         if (mSU != null) {
+            // allow reading from devices w/o root to prevent chlid process not dying while reading
             mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
             mSU.addCommand("chmod 666 " + DEV_MOUSE);
             mH = new HIDR(mSU, DEV_KEYBOARD, DEV_MOUSE);
             say("Description", mDesc);
-            toast("Started " + this.getClass().getSimpleName());
+            log("-- Started " + this.getClass().getSimpleName());
             run();
-            toast("Ended " + this.getClass().getSimpleName());
+            log("-- Ended " + this.getClass().getSimpleName());
         } else {
-            toast("Failed to get SU");
+            log("Failed to get SU");
         }
         return null;
     }
 
     @Override
     public void onProgressUpdate(RunState... s) {
-        toast(this.getClass().getSimpleName() + ": " + s[0].name());
+        log(this.getClass().getSimpleName() + ": " + s[0].name());
     }
 
     public abstract void run();
@@ -95,7 +104,7 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
     }
 
     static Shell.Interactive createSU() {
-        try {        // setup su shell
+        try {
             final CountDownLatch latch = new CountDownLatch(1);
             final boolean[] root = new boolean[1];
             Shell.Interactive sh = new Shell.Builder()
@@ -124,18 +133,37 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         return null;
     }
 
-    void toast(final String s) {
+    /**
+     * Puts a log on screen
+     *
+     * @param s Log message to send
+     */
+    void log(final String s) {
         looper(new Runnable() {
             public void run() {
-                Toast.makeText(HIDTask.this.getContext(), s, Toast.LENGTH_SHORT).show();
+//                Toast.makeText(HIDTask.this.getContext(), s, Toast.LENGTH_SHORT).show();
+                mLogView.setText(mLogView.getText() + "\n" + s);
+                mScrollView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        mScrollView.fullScroll(View.FOCUS_DOWN);
+                    }
+                });
             }
         });
     }
 
-    String ask(final String title){
+    String ask(final String title) {
         return ask(title, "");
     }
 
+    /**
+     * Prompts user for information
+     *
+     * @param title Title of prompt
+     * @param def   Default value of prompt
+     * @return prompt response
+     */
     String ask(final String title, final String def) {
         final String[] m_Text = new String[1];
         final CountDownLatch latch = new CountDownLatch(1);
@@ -175,6 +203,12 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         return m_Text[0];
     }
 
+    /**
+     * Pops an alert dialog
+     *
+     * @param title Title of alert
+     * @param msg   Message of alert
+     */
     void say(final String title, final String msg) {
         final CountDownLatch latch = new CountDownLatch(1);
 
@@ -207,6 +241,11 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         }
     }
 
+    /**
+     * Runs code in context thread
+     *
+     * @param r Runnable to run
+     */
     private void looper(Runnable r) {
         Handler handler = new Handler(this.getContext().getMainLooper());
         handler.post(r);

@@ -44,7 +44,7 @@ public class FuzzerTask extends HIDTask {
 //                    c |= HID.hid_mouse(sh, "/dev/hidg1", (byte) 0, (byte) 10);
 //                    Thread.sleep(1000);
                 }
-                toast("Disconnected");
+                log("Disconnected");
             }
         } catch (InterruptedException ignored) {
         } catch (Exception e) {

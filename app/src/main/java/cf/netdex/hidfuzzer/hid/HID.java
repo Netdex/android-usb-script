@@ -9,13 +9,13 @@ import eu.chainfire.libsuperuser.Shell;
 
 /**
  * Native communication with HID devices
- *
+ * <p>
  * Created by netdex on 1/15/2017.
  */
 
 public class HID {
-    private static byte[] mouse_buf = new byte[4];
-    private static byte[] keyboard_buf = new byte[8];
+    private static final byte[] mouse_buf = new byte[4];
+    private static final byte[] keyboard_buf = new byte[8];
 
     /**
      * A        B        C        D
@@ -29,7 +29,7 @@ public class HID {
      * @param sh     SU shell
      * @param dev    Mouse device (/dev/hidg1)
      * @param offset HID mouse bytes
-     * @return error c
+     * @return error code
      */
     public static int hid_mouse(Shell.Interactive sh, String dev, byte... offset) {
         if (offset.length > 4)
@@ -50,7 +50,7 @@ public class HID {
      * @param sh   SU shell
      * @param dev  KB device (/dev/hidg0)
      * @param keys HID keyboard bytes
-     * @return error c
+     * @return error code
      */
     public static int hid_keyboard(Shell.Interactive sh, String dev, byte... keys) {
         if (keys.length > 7)
@@ -61,9 +61,20 @@ public class HID {
         return write_bytes(sh, dev, keyboard_buf);
     }
 
+    // TODO I'm pretty sure this code could be more efficient
+    private static final int[] mErr = new int[1];
+
+    /**
+     * Writes bytes to a file with "echo -n -e [binary string] > file"
+     *
+     * @param sh  Interactive shell to send echo command
+     * @param dev File to write to
+     * @param arr Bytes to write
+     * @return error code
+     */
     private static int write_bytes(Shell.Interactive sh, String dev, byte[] arr) {
         String bt = escapeBytes(arr);
-        final Integer[] err = {-1};
+        mErr[0] = -1;
         try {
             // run echo command to write to device as root
             final CountDownLatch latch = new CountDownLatch(1);
@@ -76,7 +87,7 @@ public class HID {
 
                 @Override
                 public void onCommandResult(int commandCode, int exitCode) {
-                    err[0] = exitCode;
+                    mErr[0] = exitCode;
                     latch.countDown();
                 }
             });
@@ -85,29 +96,26 @@ public class HID {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return err[0];
+        return mErr[0];
     }
 
     private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
 
     /**
      * Escapes a byte array into a string
-     * ex. [0x0, 0x4, 0x4] => "\x00\x04\x04"
+     * ex. [0x00, 0x04, 0x04] => "\x00\x04\x04"
      *
      * @param arr Byte array to escape
      * @return Escaped byte array as string
      */
     private static String escapeBytes(byte[] arr) {
         StringBuilder sb = new StringBuilder();
-        for ( int j = 0; j < arr.length; j++ ) {
+        for (int j = 0; j < arr.length; j++) {
             int v = arr[j] & 0xFF;
-            sb.append("\\").append(hexArray[v >>> 4]).append(hexArray[v & 0x0F]);
+            sb.append("\\x").append(hexArray[v >>> 4]).append(hexArray[v & 0x0F]);
         }
         return sb.toString();
     }
-
-
-
 
 
 }

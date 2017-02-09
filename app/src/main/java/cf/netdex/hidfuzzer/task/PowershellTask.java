@@ -3,7 +3,6 @@ package cf.netdex.hidfuzzer.task;
 import android.content.Context;
 
 import cf.netdex.hidfuzzer.hid.HIDR;
-import cf.netdex.hidfuzzer.hid.Input;
 import eu.chainfire.libsuperuser.Shell;
 
 import static cf.netdex.hidfuzzer.hid.Input.KB;
@@ -44,7 +43,7 @@ public class PowershellTask extends HIDTask {
             while (!isCancelled() && h.test() == 0) {
                 h.delay(1000);
             }
-            toast("Disconnected");
+            log("Disconnected");
         }
     }
 }

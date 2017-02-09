@@ -1,9 +1,7 @@
 package cf.netdex.hidfuzzer.task;
 
 import android.content.Context;
-import android.util.Log;
 
-import cf.netdex.hidfuzzer.hid.HID;
 import cf.netdex.hidfuzzer.hid.HIDR;
 import cf.netdex.hidfuzzer.hid.Input;
 import eu.chainfire.libsuperuser.Shell;
@@ -55,7 +53,7 @@ public class WallpaperTask extends HIDTask {
             while (!isCancelled() && h.test() == 0) {
                 h.delay(1000);
             }
-            toast("Disconnected");
+            log("Disconnected");
         }
     }
 }

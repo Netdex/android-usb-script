@@ -12,6 +12,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import cf.netdex.hidfuzzer.task.LtdPowerShellTask;
 import cf.netdex.hidfuzzer.task.PowershellTask;
 import cf.netdex.hidfuzzer.task.DownloadTask;
 import cf.netdex.hidfuzzer.task.WallpaperTask;
@@ -22,24 +23,28 @@ import cf.netdex.hidfuzzer.task.TestTask;
 public class MainActivity extends AppCompatActivity {
 
     public static String TAG = "tag_hidfuzzer";
-    private HIDTask RUNNING_TASK;
 
+    /* initialize class map to dynamically load tasks */
     static final Class[] TASKS = {
             TestTask.class,
             WallpaperTask.class,
             DownloadTask.class,
             PowershellTask.class,
+            LtdPowerShellTask.class,
             FuzzerTask.class
     };
-
     static final HashMap<String, Class> mTaskMap = new HashMap<>();
     static final ArrayList<String> mTaskSpinnerItems = new ArrayList<>();
+
     static {
         for (Class c : TASKS) {
             mTaskMap.put(c.getName(), c);
             mTaskSpinnerItems.add(c.getName());
         }
     }
+    /* end class map initialization */
+
+    private HIDTask RUNNING_TASK;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,7 +52,6 @@ public class MainActivity extends AppCompatActivity {
 
         final ToggleButton btnPoll = (ToggleButton) findViewById(R.id.btnPoll);
         final Spinner spnTask = (Spinner) findViewById(R.id.spnTask);
-
 
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(
                 this, android.R.layout.simple_spinner_item, mTaskSpinnerItems);

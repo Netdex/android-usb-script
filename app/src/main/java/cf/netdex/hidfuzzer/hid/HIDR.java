@@ -35,18 +35,37 @@ public class HIDR {
         }
     }
 
+    /**
+     * Tests if current HID device is connected by sending a dummy key
+     * @return error code
+     */
     public int test() {
         return hid_keyboard((byte) 0, Input.KB.K.VOLUME_UP.c);
     }
 
+    /**
+     * Sends mouse command
+     * @param offset command byte[] to send, defined in HID.java
+     * @return error code
+     */
     public int hid_mouse(byte... offset) {
         return HID.hid_mouse(mSU, mDevMouse, offset);
     }
 
+    /**
+     * Sends keyboard command
+     * @param keys command byte[] to send, defined in HID.java
+     * @return error code
+     */
     public int hid_keyboard(byte... keys) {
         return HID.hid_keyboard(mSU, mDevKeyboard, keys);
     }
 
+    /**
+     * Presses keys and releases it
+     * @param keys command byte[] to send, defined in HID.java
+     * @return error code
+     */
     public int press_keys(byte... keys) {
         int ec = 0;
         ec |= hid_keyboard(keys);
@@ -54,7 +73,7 @@ public class HIDR {
         return ec;
     }
 
-    /* Begin string to c conversion tables */
+    /* Begin string to code conversion tables */
     private static final String MP_ALPHA = "abcdefghijklmnopqrstuvwxyz";        // 0x04
     private static final String MP_ALPHA_ALT = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";    // 0x04 SHIFT
     private static final String MP_NUM = "1234567890";                          // 0x1E
@@ -95,12 +114,23 @@ public class HIDR {
             }
         }
     }
-    /* End string to c conversion tables */
+    /* End string to code conversion tables */
 
+    /**
+     * Sends a string to the keyboard with no delay
+     * @param s String to send
+     * @return error code
+     */
     public int send_string(String s) {
         return send_string(s, 0);
     }
 
+    /**
+     * Sends a string to the keyboard
+     * @param s String to send
+     * @param d Delay after key press
+     * @return error code
+     */
     public int send_string(String s, int d) {
         int ec = 0;
         char lc = Character.MIN_VALUE;
@@ -122,11 +152,18 @@ public class HIDR {
         return mKeyboardLightListener;
     }
 
+    /**
+     * Listens for changes in keyboard lights (num lock, caps lock, scroll lock)
+     */
     public class KeyboardLightListener {
         private Process mKeyboardLightProc;
         private InputStream mKeyboardLightStream;
         private int mLastLightState;
 
+        /**
+         * Begins keyboard light listening process
+         * @return error code
+         */
         public int start() {
             if (mKeyboardLightProc != null)
                 throw new IllegalArgumentException("KB light proc already running");
@@ -163,6 +200,10 @@ public class HIDR {
             }
         }
 
+        /**
+         * Checks for availability of new data from keyboard light stream
+         * @return bytes available to read, or -1 if null
+         */
         public int available() {
             if (mKeyboardLightStream != null) {
                 try {
@@ -174,25 +215,10 @@ public class HIDR {
             return -1;
         }
 
+        /**
+         * Kill the listener process and tidy up
+         */
         public void kill() {
-            // HACK don't stare at this for too long, or your eyes will burn out
-//                Field f = mKeyboardLightProc.getClass().getDeclaredField("pid");
-//                f.setAccessible(true);
-//                long pid = f.getLong(mKeyboardLightProc);
-//                f.setAccessible(false);
-//                String cmd = "pkill -KILL -P " + pid;
-//                Log.d("A", cmd);
-//                mSU.addCommand(cmd, 0, new Shell.OnCommandLineListener() {
-//                    @Override
-//                    public void onCommandResult(int commandCode, int exitCode) {
-//                        Log.d("A", commandCode + " " + exitCode);
-//                    }
-//
-//                    @Override
-//                    public void onLine(String line) {
-//                        Log.d("A", line);
-//                    }
-//                });
             if (mKeyboardLightStream != null) {
                 try {
                     mKeyboardLightStream.close();
