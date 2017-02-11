@@ -57,16 +57,17 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
     protected Void doInBackground(Void... params) {
         mSU = createSU();
         if (mSU != null) {
-            // allow reading from devices w/o root to prevent chlid process not dying while reading
+            // allow reading from devices w/o root to prevent child process not dying while reading
             mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
             mSU.addCommand("chmod 666 " + DEV_MOUSE);
             mH = new HIDR(mSU, DEV_KEYBOARD, DEV_MOUSE);
             //say("Description", mDesc);
-            log("-- Started " + this.getClass().getSimpleName());
+            log("-- started " + this.getClass().getSimpleName());
+            log("description: " + mDesc);
             run();
-            log("-- Ended " + this.getClass().getSimpleName());
+            log("-- ended " + this.getClass().getSimpleName());
         } else {
-            log("Failed to get SU");
+            log("! failed to obtain su !");
         }
         return null;
     }
@@ -144,7 +145,7 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         looper(new Runnable() {
             public void run() {
 //                Toast.makeText(HIDTask.this.getContext(), s, Toast.LENGTH_SHORT).show();
-                mLogView.setText(mLogView.getText() + s + "\n");
+                mLogView.append(s + "\n");
                 mScrollView.post(new Runnable() {
                     @Override
                     public void run() {

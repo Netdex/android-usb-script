@@ -26,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
     public static String TAG = "tag_hidfuzzer";
 
     /* initialize class map to dynamically load tasks */
-    static final Class[] TASKS = {
+    static final Class[] fTasks = {
             TestTask.class,
             SerialTransferDebugTask.class,
             WallpaperTask.class,
@@ -35,18 +35,20 @@ public class MainActivity extends AppCompatActivity {
             LtdPowerShellTask.class,
             FuzzerTask.class
     };
-    static final HashMap<String, Class> mTaskMap = new HashMap<>();
-    static final ArrayList<String> mTaskSpinnerItems = new ArrayList<>();
 
-    static {
-        for (Class c : TASKS) {
-            mTaskMap.put(c.getName(), c);
-            mTaskSpinnerItems.add(c.getName());
+    static final HashMap<String, Class> fTaskMap = new HashMap<>();                                     // I only made this map because I'm too lazy to make a custom list adapter
+    static final ArrayList<String> fTaskSpinnerItems = new ArrayList<>();
+
+    static {                                                                                            // static blocks aren't that bad... okay?
+        for (Class c : fTasks) {
+            fTaskMap.put(c.getSimpleName(), c);
+            fTaskSpinnerItems.add(c.getSimpleName());
         }
     }
+
     /* end class map initialization */
 
-    private HIDTask RUNNING_TASK;
+    private HIDTask mRunningTask;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,8 +57,8 @@ public class MainActivity extends AppCompatActivity {
         final ToggleButton btnPoll = (ToggleButton) findViewById(R.id.btnPoll);
         final Spinner spnTask = (Spinner) findViewById(R.id.spnTask);
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
-                this, android.R.layout.simple_spinner_item, mTaskSpinnerItems);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_item, fTaskSpinnerItems);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spnTask.setAdapter(adapter);
 
@@ -65,11 +67,11 @@ public class MainActivity extends AppCompatActivity {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
                     String stask = (String) spnTask.getSelectedItem();
-                    Class c = mTaskMap.get(stask);
+                    Class c = fTaskMap.get(stask);
                     try {
 
-                        RUNNING_TASK = (HIDTask) c.getDeclaredConstructor(Context.class).newInstance(MainActivity.this);
-                        RUNNING_TASK.execute();
+                        mRunningTask = (HIDTask) c.getDeclaredConstructor(Context.class).newInstance(MainActivity.this);
+                        mRunningTask.execute();
                     } catch (InstantiationException e) {
                         e.printStackTrace();
                     } catch (IllegalAccessException e) {
@@ -80,8 +82,8 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                 } else {
-                    if (RUNNING_TASK != null)
-                        RUNNING_TASK.cancel(false);
+                    if (mRunningTask != null)
+                        mRunningTask.cancel(false);
                 }
             }
         });
