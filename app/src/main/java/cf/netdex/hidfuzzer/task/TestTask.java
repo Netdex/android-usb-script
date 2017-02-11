@@ -43,9 +43,10 @@ public class TestTask extends HIDTask {
 
             int c = 0;
             while (c == 0 && !isCancelled()) {
-                c |= h.send_string("the quick brown fox jumped over the lazy dog.");
-                c |= h.press_keys((byte) 0, Input.KB.K.ENTER.c);
-                h.delay(100);
+//                c |= h.send_string("the quick brown fox jumped over the lazy dog.");
+//                c |= h.press_keys((byte) 0, Input.KB.K.ENTER.c);
+                c |= h.test();
+                h.delay(5000);
             }
             log("Disconnected");
         }

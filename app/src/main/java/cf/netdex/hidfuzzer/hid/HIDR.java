@@ -15,11 +15,11 @@ import eu.chainfire.libsuperuser.Shell;
  */
 
 public class HIDR {
-    private Shell.Interactive mSU;
-    private String mDevKeyboard;
-    private String mDevMouse;
+    private final Shell.Interactive mSU;
+    private final String mDevKeyboard;
+    private final String mDevMouse;
 
-    private KeyboardLightListener mKeyboardLightListener;
+    private final KeyboardLightListener mKeyboardLightListener;
 
     public HIDR(Shell.Interactive su, String devKeyboard, String devMouse) {
         this.mSU = su;

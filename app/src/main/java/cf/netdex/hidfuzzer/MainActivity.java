@@ -15,6 +15,7 @@ import java.util.HashMap;
 import cf.netdex.hidfuzzer.task.LtdPowerShellTask;
 import cf.netdex.hidfuzzer.task.PowershellTask;
 import cf.netdex.hidfuzzer.task.DownloadTask;
+import cf.netdex.hidfuzzer.task.SerialTransferDebugTask;
 import cf.netdex.hidfuzzer.task.WallpaperTask;
 import cf.netdex.hidfuzzer.task.FuzzerTask;
 import cf.netdex.hidfuzzer.task.HIDTask;
@@ -27,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
     /* initialize class map to dynamically load tasks */
     static final Class[] TASKS = {
             TestTask.class,
+            SerialTransferDebugTask.class,
             WallpaperTask.class,
             DownloadTask.class,
             PowershellTask.class,

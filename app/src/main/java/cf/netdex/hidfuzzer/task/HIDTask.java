@@ -41,10 +41,10 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
     private ScrollView mScrollView;
     private TextView mLogView;
 
-    public HIDTask(Context context, String desc) {
+    HIDTask(Context context, String desc) {
         this.mContext = context;
         this.mDesc = desc;
-        
+
         this.mLogView = (TextView) (((Activity) context).findViewById(R.id.txtLog));
         this.mScrollView = (ScrollView) (((Activity) context).findViewById(R.id.scrollview));
     }
@@ -61,7 +61,7 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
             mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
             mSU.addCommand("chmod 666 " + DEV_MOUSE);
             mH = new HIDR(mSU, DEV_KEYBOARD, DEV_MOUSE);
-            say("Description", mDesc);
+            //say("Description", mDesc);
             log("-- Started " + this.getClass().getSimpleName());
             run();
             log("-- Ended " + this.getClass().getSimpleName());
