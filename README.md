@@ -5,8 +5,6 @@ Requires https://github.com/pelya/android-keyboard-gadget patch applied to the k
 
 Use at your own risk.
 
-<img src="https://my.mixtape.moe/ogkgoz.png" width=200/>
-
 A couple of demo applications are implemented:
 - Fuzzing of HID protocol
 - PowerShell download and run executable
@@ -14,3 +12,8 @@ A couple of demo applications are implemented:
 - Serial transfer of data through output reports
 - Change wallpaper ([video demonstration](https://my.mixtape.moe/zxerjz.mp4))
 - Probably more but I was too lazy to update readme
+
+**Q:** Why is the app so ugly?<br>
+**A:** :cry: (functionality over fashion
+
+<img src="https://my.mixtape.moe/ogkgoz.png" width=200/>
