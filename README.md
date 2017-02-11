@@ -5,12 +5,12 @@ Requires https://github.com/pelya/android-keyboard-gadget patch applied to the k
 
 Use at your own risk.
 
-<img src="https://my.mixtape.moe/ogkgoz.png" width=400/>
+<img src="https://my.mixtape.moe/ogkgoz.png" width=200/>
 
 A couple of demo applications are implemented:
 - Fuzzing of HID protocol
 - PowerShell download and run executable
 - PowerShell download and run PowerShell script
 - Serial transfer of data through output reports
-- Change wallpaper
+- Change wallpaper ([video demonstration](https://my.mixtape.moe/zxerjz.mp4))
 - Probably more but I was too lazy to update readme
