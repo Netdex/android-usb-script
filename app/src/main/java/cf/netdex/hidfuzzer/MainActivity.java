@@ -12,9 +12,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import cf.netdex.hidfuzzer.task.DownloadRunTask;
 import cf.netdex.hidfuzzer.task.LtdPowerShellTask;
 import cf.netdex.hidfuzzer.task.PowershellTask;
-import cf.netdex.hidfuzzer.task.DownloadTask;
 import cf.netdex.hidfuzzer.task.SerialTransferDebugTask;
 import cf.netdex.hidfuzzer.task.WallpaperTask;
 import cf.netdex.hidfuzzer.task.FuzzerTask;
@@ -30,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
             TestTask.class,
             SerialTransferDebugTask.class,
             WallpaperTask.class,
-            DownloadTask.class,
+            DownloadRunTask.class,
             PowershellTask.class,
             LtdPowerShellTask.class,
             FuzzerTask.class

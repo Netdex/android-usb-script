@@ -6,7 +6,9 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.text.Html;
 import android.text.InputType;
+import android.text.SpannableStringBuilder;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -62,19 +64,20 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
             mSU.addCommand("chmod 666 " + DEV_MOUSE);
             mH = new HIDR(mSU, DEV_KEYBOARD, DEV_MOUSE);
             //say("Description", mDesc);
-            log("-- started " + this.getClass().getSimpleName());
-            log("description: " + mDesc);
+
+            log("<b>-- started <i>" + this.getClass().getSimpleName() + "</i></b>", true);
+            log("<i>description: " + mDesc + "</i>");
             run();
-            log("-- ended " + this.getClass().getSimpleName());
+            log("<b>-- ended <i>" + this.getClass().getSimpleName() + "</i></b>");
         } else {
-            log("! failed to obtain su !");
+            log("<b>! failed to obtain su !</b>");
         }
         return null;
     }
 
     @Override
     public void onProgressUpdate(RunState... s) {
-        log(this.getClass().getSimpleName() + ": " + s[0].name());
+        log(this.getClass().getSimpleName() + ": <b>" + s[0].name() + "</b>");
     }
 
     public abstract void run();
@@ -136,16 +139,25 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         return null;
     }
 
+    void log(final String s) {
+        log(s, false);
+    }
+
     /**
      * Puts a log on screen
      *
      * @param s Log message to send
      */
-    void log(final String s) {
+    void log(final String s, final boolean clear) {
         looper(new Runnable() {
             public void run() {
+                if (clear)
+                    mLogView.setText("");
 //                Toast.makeText(HIDTask.this.getContext(), s, Toast.LENGTH_SHORT).show();
-                mLogView.append(s + "\n");
+                SpannableStringBuilder ssb = new SpannableStringBuilder(mLogView.getText());
+                ssb.append(Html.fromHtml(s)).append("\n");
+                mLogView.setText(ssb, TextView.BufferType.SPANNABLE);
+
                 mScrollView.post(new Runnable() {
                     @Override
                     public void run() {
@@ -154,6 +166,53 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
                 });
             }
         });
+    }
+
+    boolean should(final String title, final String prompt) {
+        final boolean[] mResult = new boolean[1];
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        looper(new Runnable() {
+            @Override
+            public void run() {
+                AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
+                builder.setTitle(title);
+
+                final TextView txtPrompt = new TextView(mContext);
+                txtPrompt.setPadding(40, 40, 40, 40);
+                txtPrompt.setText(prompt);
+                builder.setView(txtPrompt);
+
+                builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        mResult[0] = true;
+                        latch.countDown();
+                    }
+                });
+                builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        mResult[0] = false;
+                        latch.countDown();
+                    }
+                });
+                builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface dialog) {
+                        mResult[0] = false;
+                        latch.countDown();
+                    }
+                });
+                builder.setCancelable(false);
+                builder.show();
+            }
+        });
+        try {
+            latch.await();
+        } catch (InterruptedException ignored) {
+        }
+        return mResult[0];
     }
 
     String ask(final String title) {

