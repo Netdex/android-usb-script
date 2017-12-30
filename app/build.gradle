@@ -1,14 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    compileSdkVersion 27
+    buildToolsVersion '27.0.3'
     defaultConfig {
         applicationId "cf.netdex.hidfuzzer"
         minSdkVersion 16
-        targetSdkVersion 25
+        targetSdkVersion 27
         versionCode 3
-        versionName '0.1.1'
+        versionName '0.1.5'
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -19,6 +19,10 @@ android {
     }
     productFlavors {
     }
+    compileOptions {
+        targetCompatibility 1.8
+        sourceCompatibility 1.8
+    }
 }
 
 dependencies {
@@ -26,7 +30,8 @@ dependencies {
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    compile 'com.android.support:appcompat-v7:25.1.0'
-    compile 'eu.chainfire:libsuperuser:1.0.0.201608240809'
+    compile 'com.android.support:appcompat-v7:27.0.2'
+    compile 'eu.chainfire:libsuperuser:1.0.0.+'
+    compile 'org.luaj:luaj-jse:3.0.1'
     testCompile 'junit:junit:4.12'
 }

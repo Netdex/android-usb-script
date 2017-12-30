@@ -1,0 +1,3 @@
+-- LUA MODULE IMPLEMENTATION TEST
+
+hid.log("test")

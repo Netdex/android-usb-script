@@ -1,4 +1,4 @@
-package cf.netdex.hidfuzzer.task;
+package cf.netdex.hidfuzzer.ltask;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -15,40 +15,50 @@ import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import org.luaj.vm2.Globals;
+import org.luaj.vm2.LuaValue;
+
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import cf.netdex.hidfuzzer.MainActivity;
 import cf.netdex.hidfuzzer.R;
 import cf.netdex.hidfuzzer.hid.HIDR;
+import cf.netdex.hidfuzzer.lua.LuaHIDBinding;
 import eu.chainfire.libsuperuser.Shell;
 
 /**
  * Created by netdex on 1/16/2017.
  */
 
-public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
+public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
 
     static final String DEV_KEYBOARD = "/dev/hidg0";
     static final String DEV_MOUSE = "/dev/hidg1";
 
     private Context mContext;
-
-    private Shell.Interactive mSU;
-    private HIDR mH;
-
-    private String mDesc;
-
     // TODO: remove hacky behavior for updating log view
     private ScrollView mScrollView;
     private TextView mLogView;
 
-    HIDTask(Context context, String desc) {
+    private Shell.Interactive mSU;
+    private HIDR mH;
+    private LuaHIDBinding mLuaHIDBinding;
+
+    private String mName;
+    private Globals mLuaGlobals;
+    private LuaValue mLuaChunk;
+
+    public HIDTask(Context context, String name, String src) {
         this.mContext = context;
-        this.mDesc = desc;
+        this.mName = name;
 
         this.mLogView = (TextView) (((Activity) context).findViewById(R.id.txtLog));
         this.mScrollView = (ScrollView) (((Activity) context).findViewById(R.id.scrollview));
+
+        mLuaHIDBinding = new LuaHIDBinding(this);
+        mLuaGlobals = LuaTaskLoader.createGlobals(this);
+        mLuaChunk = LuaTaskLoader.loadChunk(mLuaGlobals, src);
     }
 
     public Context getContext() {
@@ -63,12 +73,10 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
             mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
             mSU.addCommand("chmod 666 " + DEV_MOUSE);
             mH = new HIDR(mSU, DEV_KEYBOARD, DEV_MOUSE);
-            //say("Description", mDesc);
-
-            log("<b>-- started <i>" + this.getClass().getSimpleName() + "</i></b>", true);
-            log("<i>description: " + mDesc + "</i>");
+            clear();
+            log("<b>-- started <i>" + mName + "</i></b>");
             run();
-            log("<b>-- ended <i>" + this.getClass().getSimpleName() + "</i></b>");
+            log("<b>-- ended <i>" + mName + "</i></b>");
         } else {
             log("<b>! failed to obtain su !</b>");
         }
@@ -80,7 +88,9 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         log(this.getClass().getSimpleName() + ": <b>" + s[0].name() + "</b>");
     }
 
-    public abstract void run();
+    public void run() {
+        mLuaChunk.call();
+    }
 
     @Override
     protected void onCancelled() {
@@ -105,7 +115,7 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         return mSU;
     }
 
-    HIDR getHIDR() {
+    public HIDR getHIDR() {
         return mH;
     }
 
@@ -139,74 +149,64 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         return null;
     }
 
-    void log(final String s) {
-        log(s, false);
-    }
-
     /**
      * Puts a log on screen
      *
      * @param s Log message to send
      */
-    void log(final String s, final boolean clear) {
-        looper(new Runnable() {
-            public void run() {
-                if (clear)
-                    mLogView.setText("");
+    public void log(final String s) {
+        looper(() -> {
 //                Toast.makeText(HIDTask.this.getContext(), s, Toast.LENGTH_SHORT).show();
-                SpannableStringBuilder ssb = new SpannableStringBuilder(mLogView.getText());
-                ssb.append(Html.fromHtml(s)).append("\n");
-                mLogView.setText(ssb, TextView.BufferType.SPANNABLE);
+            SpannableStringBuilder ssb = new SpannableStringBuilder(mLogView.getText());
+            ssb.append(Html.fromHtml(s)).append("\n");
+            mLogView.setText(ssb, TextView.BufferType.SPANNABLE);
 
-                mScrollView.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        mScrollView.fullScroll(View.FOCUS_DOWN);
-                    }
-                });
-            }
+            mScrollView.post(() -> mScrollView.fullScroll(View.FOCUS_DOWN));
         });
     }
 
-    boolean should(final String title, final String prompt) {
+    public void clear(){
+        looper(()->{
+            mLogView.setText("");
+        });
+    }
+
+    public boolean should(final String title, final String prompt) {
         final boolean[] mResult = new boolean[1];
         final CountDownLatch latch = new CountDownLatch(1);
 
-        looper(new Runnable() {
-            @Override
-            public void run() {
-                AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
-                builder.setTitle(title);
+        looper(() -> {
+            AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
+            builder.setTitle(title);
 
-                final TextView txtPrompt = new TextView(mContext);
-                txtPrompt.setPadding(40, 40, 40, 40);
-                txtPrompt.setText(prompt);
-                builder.setView(txtPrompt);
+            final TextView txtPrompt = new TextView(mContext);
+            txtPrompt.setPadding(40, 40, 40, 40);
+            txtPrompt.setText(prompt);
+            builder.setView(txtPrompt);
 
-                builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        mResult[0] = true;
-                        latch.countDown();
-                    }
-                });
-                builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        mResult[0] = false;
-                        latch.countDown();
-                    }
-                });
-                builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                    @Override
-                    public void onCancel(DialogInterface dialog) {
-                        mResult[0] = false;
-                        latch.countDown();
-                    }
-                });
-                builder.setCancelable(false);
-                builder.show();
-            }
+            builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    mResult[0] = true;
+                    latch.countDown();
+                }
+            });
+            builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    mResult[0] = false;
+                    latch.countDown();
+                }
+            });
+            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                @Override
+                public void onCancel(DialogInterface dialog) {
+                    mResult[0] = false;
+                    latch.countDown();
+                }
+            });
+            builder.setCancelable(false);
+            builder.show();
         });
         try {
             latch.await();
@@ -226,37 +226,34 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
      * @param def   Default value of prompt
      * @return prompt response
      */
-    String ask(final String title, final String def) {
+    public String ask(final String title, final String def) {
         final String[] m_Text = new String[1];
         final CountDownLatch latch = new CountDownLatch(1);
 
-        looper(new Runnable() {
-            @Override
-            public void run() {
-                AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
-                builder.setTitle(title);
+        looper(() -> {
+            AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
+            builder.setTitle(title);
 
-                final EditText input = new EditText(mContext);
-                input.setInputType(InputType.TYPE_CLASS_TEXT);
-                input.setText(def);
-                builder.setView(input);
+            final EditText input = new EditText(mContext);
+            input.setInputType(InputType.TYPE_CLASS_TEXT);
+            input.setText(def);
+            builder.setView(input);
 
-                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        m_Text[0] = input.getText().toString();
-                        latch.countDown();
-                    }
-                });
-                builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                    @Override
-                    public void onCancel(DialogInterface dialog) {
-                        latch.countDown();
-                    }
-                });
-                builder.setCancelable(false);
-                builder.show();
-            }
+            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    m_Text[0] = input.getText().toString();
+                    latch.countDown();
+                }
+            });
+            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                @Override
+                public void onCancel(DialogInterface dialog) {
+                    latch.countDown();
+                }
+            });
+            builder.setCancelable(false);
+            builder.show();
         });
         try {
             latch.await();
@@ -271,7 +268,7 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
      * @param title Title of alert
      * @param msg   Message of alert
      */
-    void say(final String title, final String msg) {
+    public void say(final String title, final String msg) {
         final CountDownLatch latch = new CountDownLatch(1);
 
         looper(new Runnable() {
@@ -311,6 +308,10 @@ public abstract class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
     private void looper(Runnable r) {
         Handler handler = new Handler(this.getContext().getMainLooper());
         handler.post(r);
+    }
+
+    public LuaHIDBinding getLuaHIDBinding() {
+        return mLuaHIDBinding;
     }
 
     public enum RunState {
