@@ -28,13 +28,22 @@ public class LuaHIDBinding {
     }
 
     public void bind(Globals globals) {
-        LuaValue lib = tableOf();
-        LuaFunction funcs[] = {
+        LuaValue libHid = tableOf();
+        LuaValue libIo = tableOf();
+
+        LuaFunction hidFuncs[] = {
                 new delay(), new test(), new hid_mouse(), new hid_keyboard(), new press_keys(),
-                new send_string(), new cancelled(), new log(), new should(), new ask(), new say()
+                new send_string(), new cancelled(),
         };
-        for (LuaFunction f : funcs) {
-            lib.set(f.name(), f);
+        for (LuaFunction f : hidFuncs) {
+            libHid.set(f.name(), f);
+        }
+
+        LuaFunction ioFuncs[] = {
+                new log(), new should(), new ask(), new say()
+        };
+        for (LuaFunction f : ioFuncs) {
+            libIo.set(f.name(), f);
         }
 
         // all constant enum values (please tell me if there is a better way to do this)
@@ -58,8 +67,10 @@ public class LuaHIDBinding {
         keyboard.set("k", keyCodes);
         input.set("m", mouse);
         input.set("kb", keyboard);
-        lib.set("input", input);
-        globals.set("hid", lib);
+        libHid.set("input", input);
+
+        globals.set("hid", libHid);
+        globals.set("dio", libIo);
     }
 
     class delay extends OneArgFunction {
@@ -119,6 +130,7 @@ public class LuaHIDBinding {
 
         @Override
         public LuaValue call(LuaValue string, LuaValue delay) {
+            if(delay.isnil()) delay = valueOf(0);
             String s = string.checkjstring();
             int d = delay.checkint();
             task.getHIDR().send_string(s, d);
@@ -139,7 +151,7 @@ public class LuaHIDBinding {
         @Override
         public LuaValue call(LuaValue arg) {
             String msg = arg.tojstring();
-            task.log(msg);
+            task.getIO().log(msg);
             return NIL;
         }
     }
@@ -150,7 +162,7 @@ public class LuaHIDBinding {
         public LuaValue call(LuaValue title, LuaValue message) {
             String t = title.tojstring();
             String m = message.tojstring();
-            return valueOf(task.should(t, m));
+            return valueOf(task.getIO().should(t, m));
         }
     }
 
@@ -160,7 +172,7 @@ public class LuaHIDBinding {
         public LuaValue call(LuaValue title, LuaValue defaults) {
             String t = title.tojstring();
             String d = defaults.tojstring();
-            return valueOf(task.ask(t, d));
+            return valueOf(task.getIO().ask(t, d));
         }
     }
 
@@ -170,7 +182,7 @@ public class LuaHIDBinding {
         public LuaValue call(LuaValue title, LuaValue message) {
             String t = title.tojstring();
             String m = message.tojstring();
-            task.say(t, m);
+            task.getIO().say(t, m);
             return NIL;
         }
     }

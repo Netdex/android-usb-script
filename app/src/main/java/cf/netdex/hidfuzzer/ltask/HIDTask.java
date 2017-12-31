@@ -1,28 +1,18 @@
 package cf.netdex.hidfuzzer.ltask;
 
-import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.os.AsyncTask;
-import android.os.Handler;
-import android.text.Html;
-import android.text.InputType;
-import android.text.SpannableStringBuilder;
 import android.util.Log;
-import android.view.View;
-import android.widget.EditText;
-import android.widget.ScrollView;
-import android.widget.TextView;
 
 import org.luaj.vm2.Globals;
+import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
 
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import cf.netdex.hidfuzzer.MainActivity;
-import cf.netdex.hidfuzzer.R;
 import cf.netdex.hidfuzzer.hid.HIDR;
 import cf.netdex.hidfuzzer.lua.LuaHIDBinding;
 import eu.chainfire.libsuperuser.Shell;
@@ -36,60 +26,70 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
     static final String DEV_KEYBOARD = "/dev/hidg0";
     static final String DEV_MOUSE = "/dev/hidg1";
 
-    private Context mContext;
+    private WeakReference<Context> mContext;
+
     // TODO: remove hacky behavior for updating log view
-    private ScrollView mScrollView;
-    private TextView mLogView;
+    private DialogIO mUserIO;
 
     private Shell.Interactive mSU;
     private HIDR mH;
     private LuaHIDBinding mLuaHIDBinding;
 
     private String mName;
+    private String mSrc;
     private Globals mLuaGlobals;
     private LuaValue mLuaChunk;
 
+
     public HIDTask(Context context, String name, String src) {
-        this.mContext = context;
+        this.mContext = new WeakReference<>(context);
         this.mName = name;
+        this.mSrc = src;
 
-        this.mLogView = (TextView) (((Activity) context).findViewById(R.id.txtLog));
-        this.mScrollView = (ScrollView) (((Activity) context).findViewById(R.id.scrollview));
-
-        mLuaHIDBinding = new LuaHIDBinding(this);
-        mLuaGlobals = LuaTaskLoader.createGlobals(this);
-        mLuaChunk = LuaTaskLoader.loadChunk(mLuaGlobals, src);
+        mUserIO = new DialogIO(context);
     }
 
-    public Context getContext() {
-        return mContext;
+    @Override
+    protected void onPreExecute() {
+        try {
+            mLuaHIDBinding = new LuaHIDBinding(this);
+            mLuaGlobals = LuaTaskLoader.createGlobals(this);
+            mLuaChunk = LuaTaskLoader.loadChunk(mLuaGlobals, mSrc);
+        } catch (LuaError e) {
+            mUserIO.log("<b>LuaError:</b> " + e.getMessage());
+            this.cancel(true);
+        }
     }
 
     @Override
     protected Void doInBackground(Void... params) {
+        // I don't know why but apparently you can't initialize SU shell on UI thread
         mSU = createSU();
-        if (mSU != null) {
-            // allow reading from devices w/o root to prevent child process not dying while reading
-            mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
-            mSU.addCommand("chmod 666 " + DEV_MOUSE);
-            mH = new HIDR(mSU, DEV_KEYBOARD, DEV_MOUSE);
-            clear();
-            log("<b>-- started <i>" + mName + "</i></b>");
-            run();
-            log("<b>-- ended <i>" + mName + "</i></b>");
-        } else {
-            log("<b>! failed to obtain su !</b>");
+        if (mSU == null) {
+            mUserIO.log("<b>! failed to obtain su !</b>");
+            return null;
         }
+        mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
+        mSU.addCommand("chmod 666 " + DEV_MOUSE);
+        mH = new HIDR(mSU, DEV_KEYBOARD, DEV_MOUSE);
+        mUserIO.clear();
+        mUserIO.log("<b>-- started <i>" + mName + "</i></b>");
+        run();
+        mUserIO.log("<b>-- ended <i>" + mName + "</i></b>");
         return null;
     }
 
     @Override
     public void onProgressUpdate(RunState... s) {
-        log(this.getClass().getSimpleName() + ": <b>" + s[0].name() + "</b>");
+        mUserIO.log(mName + ": <b>" + s[0].name() + "</b>");
     }
 
     public void run() {
-        mLuaChunk.call();
+        try {
+            mLuaChunk.call();
+        } catch (LuaError e) {
+            mUserIO.log("<b>LuaError:</b> " + e.getMessage());
+        }
     }
 
     @Override
@@ -109,14 +109,8 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
             mSU.kill();
             mSU.close();
         }
-    }
-
-    Shell.Interactive getSU() {
-        return mSU;
-    }
-
-    public HIDR getHIDR() {
-        return mH;
+        mUserIO.getModeButton().get().setEnabled(true);
+        mUserIO.getModeButton().get().setChecked(false);
     }
 
     private static Shell.Interactive createSU() {
@@ -128,17 +122,14 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
                     .setWantSTDERR(true)
                     .setWatchdogTimeout(5)
                     .setMinimalLogging(true)
-                    .open(new Shell.OnCommandResultListener() {
-                        @Override
-                        public void onCommandResult(int commandCode, int exitCode, List<String> output) {
-                            if (exitCode != Shell.OnCommandResultListener.SHELL_RUNNING) {
-                                Log.e(MainActivity.TAG, "Failed to open SU");
-                                root[0] = false;
-                            } else {
-                                root[0] = true;
-                            }
-                            latch.countDown();
+                    .open((commandCode, exitCode, output) -> {
+                        if (exitCode != Shell.OnCommandResultListener.SHELL_RUNNING) {
+                            Log.e(MainActivity.TAG, "Failed to open SU");
+                            root[0] = false;
+                        } else {
+                            root[0] = true;
                         }
+                        latch.countDown();
                     });
             latch.await();
             if (!root[0]) return null;
@@ -149,165 +140,20 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         return null;
     }
 
-    /**
-     * Puts a log on screen
-     *
-     * @param s Log message to send
-     */
-    public void log(final String s) {
-        looper(() -> {
-//                Toast.makeText(HIDTask.this.getContext(), s, Toast.LENGTH_SHORT).show();
-            SpannableStringBuilder ssb = new SpannableStringBuilder(mLogView.getText());
-            ssb.append(Html.fromHtml(s)).append("\n");
-            mLogView.setText(ssb, TextView.BufferType.SPANNABLE);
-
-            mScrollView.post(() -> mScrollView.fullScroll(View.FOCUS_DOWN));
-        });
+    public Context getContext() {
+        return mContext.get();
     }
 
-    public void clear(){
-        looper(()->{
-            mLogView.setText("");
-        });
+    Shell.Interactive getSU() {
+        return mSU;
     }
 
-    public boolean should(final String title, final String prompt) {
-        final boolean[] mResult = new boolean[1];
-        final CountDownLatch latch = new CountDownLatch(1);
-
-        looper(() -> {
-            AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
-            builder.setTitle(title);
-
-            final TextView txtPrompt = new TextView(mContext);
-            txtPrompt.setPadding(40, 40, 40, 40);
-            txtPrompt.setText(prompt);
-            builder.setView(txtPrompt);
-
-            builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    mResult[0] = true;
-                    latch.countDown();
-                }
-            });
-            builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    mResult[0] = false;
-                    latch.countDown();
-                }
-            });
-            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                @Override
-                public void onCancel(DialogInterface dialog) {
-                    mResult[0] = false;
-                    latch.countDown();
-                }
-            });
-            builder.setCancelable(false);
-            builder.show();
-        });
-        try {
-            latch.await();
-        } catch (InterruptedException ignored) {
-        }
-        return mResult[0];
+    public HIDR getHIDR() {
+        return mH;
     }
 
-    String ask(final String title) {
-        return ask(title, "");
-    }
-
-    /**
-     * Prompts user for information
-     *
-     * @param title Title of prompt
-     * @param def   Default value of prompt
-     * @return prompt response
-     */
-    public String ask(final String title, final String def) {
-        final String[] m_Text = new String[1];
-        final CountDownLatch latch = new CountDownLatch(1);
-
-        looper(() -> {
-            AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
-            builder.setTitle(title);
-
-            final EditText input = new EditText(mContext);
-            input.setInputType(InputType.TYPE_CLASS_TEXT);
-            input.setText(def);
-            builder.setView(input);
-
-            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    m_Text[0] = input.getText().toString();
-                    latch.countDown();
-                }
-            });
-            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                @Override
-                public void onCancel(DialogInterface dialog) {
-                    latch.countDown();
-                }
-            });
-            builder.setCancelable(false);
-            builder.show();
-        });
-        try {
-            latch.await();
-        } catch (InterruptedException ignored) {
-        }
-        return m_Text[0];
-    }
-
-    /**
-     * Pops an alert dialog
-     *
-     * @param title Title of alert
-     * @param msg   Message of alert
-     */
-    public void say(final String title, final String msg) {
-        final CountDownLatch latch = new CountDownLatch(1);
-
-        looper(new Runnable() {
-            @Override
-            public void run() {
-                AlertDialog.Builder alertDialog = new AlertDialog.Builder(mContext);
-                alertDialog.setTitle(title);
-                alertDialog.setMessage(msg);
-                alertDialog.setPositiveButton("OK",
-                        new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                                dialog.dismiss();
-                                latch.countDown();
-                            }
-                        });
-                alertDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                    @Override
-                    public void onCancel(DialogInterface dialog) {
-                        latch.countDown();
-                    }
-                });
-                alertDialog.setCancelable(false);
-                alertDialog.show();
-            }
-        });
-        try {
-            latch.await();
-        } catch (InterruptedException ignored) {
-        }
-    }
-
-    /**
-     * Runs code in context thread
-     *
-     * @param r Runnable to run
-     */
-    private void looper(Runnable r) {
-        Handler handler = new Handler(this.getContext().getMainLooper());
-        handler.post(r);
+    public DialogIO getIO() {
+        return mUserIO;
     }
 
     public LuaHIDBinding getLuaHIDBinding() {

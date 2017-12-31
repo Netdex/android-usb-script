@@ -66,8 +66,10 @@ public class MainActivity extends AppCompatActivity {
                 mRunningTask = createTaskFromLuaFile(selectedTask, taskSrcFilePath);
                 mRunningTask.execute();
             } else {
-                if (mRunningTask != null)
+                if (mRunningTask != null) {
+                    btnPoll.setEnabled(false);
                     mRunningTask.cancel(false);
+                }
             }
         });
     }

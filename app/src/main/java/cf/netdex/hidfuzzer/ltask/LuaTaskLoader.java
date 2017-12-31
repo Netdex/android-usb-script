@@ -18,13 +18,13 @@ import org.luaj.vm2.lib.jse.*;
 import cf.netdex.hidfuzzer.ltask.HIDTask;
 
 public class LuaTaskLoader {
-    public static Globals createGlobals(HIDTask task){
+    public static Globals createGlobals(HIDTask task) {
         Globals globals = JsePlatform.standardGlobals();
         task.getLuaHIDBinding().bind(globals);
         return globals;
     }
 
-    public static LuaValue loadChunk(Globals globals, String code){
+    public static LuaValue loadChunk(Globals globals, String code) {
         LuaValue chunk = globals.load(code);
         return chunk;
     }

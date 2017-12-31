@@ -1,3 +1,7 @@
 -- LUA MODULE IMPLEMENTATION TEST
 
-hid.log("test")
+--while not hid.cancelled() do
+--
+--end
+
+hid.send_string("hello")
