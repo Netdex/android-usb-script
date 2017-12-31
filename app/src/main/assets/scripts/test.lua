@@ -1,7 +1,8 @@
--- LUA MODULE IMPLEMENTATION TEST
+---
+--- Created by netdex.
+--- DateTime: 12/30/17 10:12 PM
+---
+--- test.lua: types 'hello'
+---
 
---while not hid.cancelled() do
---
---end
-
-hid.send_string("hello")
+send_string("hello")

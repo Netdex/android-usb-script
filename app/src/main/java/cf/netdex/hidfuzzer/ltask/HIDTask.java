@@ -1,6 +1,7 @@
 package cf.netdex.hidfuzzer.ltask;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -79,9 +80,8 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         return null;
     }
 
-    @Override
-    public void onProgressUpdate(RunState... s) {
-        mUserIO.log(mName + ": <b>" + s[0].name() + "</b>");
+    public void progress(RunState s) {
+        mUserIO.log(mName + ": <b>" + s.name() + "</b>");
     }
 
     public void run() {
@@ -109,8 +109,9 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
             mSU.kill();
             mSU.close();
         }
-        mUserIO.getModeButton().get().setEnabled(true);
+        // For some reason, you must setChecked before setEnabled or the setEnabled will have no effect
         mUserIO.getModeButton().get().setChecked(false);
+        mUserIO.getModeButton().get().setEnabled(true);
     }
 
     private static Shell.Interactive createSU() {

@@ -30,7 +30,7 @@ public class DialogIO {
     private WeakReference<ToggleButton> mToggleButton;
 
     public DialogIO(Context context){
-        this.mContext = new WeakReference<Context>(context);
+        this.mContext = new WeakReference<>(context);
         this.mLogView = new WeakReference<>(((Activity) context).findViewById(R.id.txtLog));
         this.mScrollView = new WeakReference<>(((Activity) context).findViewById(R.id.scrollview));
         this.mToggleButton = new WeakReference<>(((Activity) context).findViewById(R.id.btnPoll));
@@ -71,26 +71,17 @@ public class DialogIO {
             txtPrompt.setText(prompt);
             builder.setView(txtPrompt);
 
-            builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    mResult[0] = true;
-                    latch.countDown();
-                }
+            builder.setPositiveButton("Yes", (dialog, which) -> {
+                mResult[0] = true;
+                latch.countDown();
             });
-            builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    mResult[0] = false;
-                    latch.countDown();
-                }
+            builder.setNegativeButton("No", (dialog, which) -> {
+                mResult[0] = false;
+                latch.countDown();
             });
-            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                @Override
-                public void onCancel(DialogInterface dialog) {
-                    mResult[0] = false;
-                    latch.countDown();
-                }
+            builder.setOnCancelListener(dialog -> {
+                mResult[0] = false;
+                latch.countDown();
             });
             builder.setCancelable(false);
             builder.show();
@@ -126,19 +117,11 @@ public class DialogIO {
             input.setText(def);
             builder.setView(input);
 
-            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    m_Text[0] = input.getText().toString();
-                    latch.countDown();
-                }
+            builder.setPositiveButton("OK", (dialog, which) -> {
+                m_Text[0] = input.getText().toString();
+                latch.countDown();
             });
-            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                @Override
-                public void onCancel(DialogInterface dialog) {
-                    latch.countDown();
-                }
-            });
+            builder.setOnCancelListener(dialog -> latch.countDown());
             builder.setCancelable(false);
             builder.show();
         });
@@ -165,18 +148,11 @@ public class DialogIO {
                 alertDialog.setTitle(title);
                 alertDialog.setMessage(msg);
                 alertDialog.setPositiveButton("OK",
-                        new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                                dialog.dismiss();
-                                latch.countDown();
-                            }
+                        (dialog, which) -> {
+                            dialog.dismiss();
+                            latch.countDown();
                         });
-                alertDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                    @Override
-                    public void onCancel(DialogInterface dialog) {
-                        latch.countDown();
-                    }
-                });
+                alertDialog.setOnCancelListener(dialog -> latch.countDown());
                 alertDialog.setCancelable(false);
                 alertDialog.show();
             }

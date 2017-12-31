@@ -28,22 +28,19 @@ public class LuaHIDBinding {
     }
 
     public void bind(Globals globals) {
-        LuaValue libHid = tableOf();
-        LuaValue libIo = tableOf();
-
         LuaFunction hidFuncs[] = {
                 new delay(), new test(), new hid_mouse(), new hid_keyboard(), new press_keys(),
                 new send_string(), new cancelled(),
         };
         for (LuaFunction f : hidFuncs) {
-            libHid.set(f.name(), f);
+            globals.set(f.name(), f);
         }
 
         LuaFunction ioFuncs[] = {
-                new log(), new should(), new ask(), new say()
+                new log(), new should(), new ask(), new say(), new progress()
         };
         for (LuaFunction f : ioFuncs) {
-            libIo.set(f.name(), f);
+            globals.set(f.name(), f);
         }
 
         // all constant enum values (please tell me if there is a better way to do this)
@@ -54,24 +51,20 @@ public class LuaHIDBinding {
         for (Input.M.B imb : Input.M.B.values()) {
             mouseButtons.set(imb.name(), imb.code);
         }
-        LuaTable keyModifiers = tableOf();
-        for (Input.KB.M ikm : Input.KB.M.values()) {
-            keyModifiers.set(ikm.name(), ikm.c);
-        }
+
         LuaTable keyCodes = tableOf();
         for (Input.KB.K ikk : Input.KB.K.values()) {
             keyCodes.set(ikk.name(), ikk.c);
         }
-        mouse.set("b", mouseButtons);
-        keyboard.set("m", keyModifiers);
-        keyboard.set("k", keyCodes);
-        input.set("m", mouse);
-        input.set("kb", keyboard);
-        libHid.set("input", input);
-
-        globals.set("hid", libHid);
-        globals.set("dio", libIo);
+        for (Input.KB.M ikm : Input.KB.M.values()) {
+            keyCodes.set(ikm.name(), ikm.c);
+        }
+        input.set("ms", mouseButtons);
+        input.set("kb", keyCodes);
+        globals.set("input", input);
     }
+
+    // TODO implement light reader
 
     class delay extends OneArgFunction {
 
@@ -95,7 +88,7 @@ public class LuaHIDBinding {
         public Varargs invoke(Varargs args) {
             byte a[] = new byte[args.narg()];
             for (int i = 1; i <= args.narg(); ++i) {
-                a[i] = (byte) args.arg(i).checkint();
+                a[i - 1] = (byte) args.arg(i).checkint();
             }
             task.getHIDR().hid_mouse(a);
             return NONE;
@@ -107,7 +100,7 @@ public class LuaHIDBinding {
         public Varargs invoke(Varargs args) {
             byte a[] = new byte[args.narg()];
             for (int i = 1; i <= args.narg(); ++i) {
-                a[i] = (byte) args.arg(i).checkint();
+                a[i - 1] = (byte) args.arg(i).checkint();
             }
             task.getHIDR().hid_keyboard(a);
             return NONE;
@@ -119,7 +112,7 @@ public class LuaHIDBinding {
         public Varargs invoke(Varargs args) {
             byte a[] = new byte[args.narg()];
             for (int i = 1; i <= args.narg(); ++i) {
-                a[i] = (byte) args.arg(i).checkint();
+                a[i - 1] = (byte) args.arg(i).checkint();
             }
             task.getHIDR().press_keys(a);
             return NONE;
@@ -130,9 +123,8 @@ public class LuaHIDBinding {
 
         @Override
         public LuaValue call(LuaValue string, LuaValue delay) {
-            if(delay.isnil()) delay = valueOf(0);
             String s = string.checkjstring();
-            int d = delay.checkint();
+            int d = delay.isnil() ? 0 : delay.checkint();
             task.getHIDR().send_string(s, d);
             return NIL;
         }
@@ -171,7 +163,7 @@ public class LuaHIDBinding {
         @Override
         public LuaValue call(LuaValue title, LuaValue defaults) {
             String t = title.tojstring();
-            String d = defaults.tojstring();
+            String d = defaults.isnil() ? "" : defaults.tojstring();
             return valueOf(task.getIO().ask(t, d));
         }
     }
@@ -183,6 +175,20 @@ public class LuaHIDBinding {
             String t = title.tojstring();
             String m = message.tojstring();
             task.getIO().say(t, m);
+            return NIL;
+        }
+    }
+
+    class progress extends OneArgFunction {
+
+        @Override
+        public LuaValue call(LuaValue status) {
+            try {
+                HIDTask.RunState state = Enum.valueOf(HIDTask.RunState.class, status.tojstring());
+                task.progress(state);
+            }catch(Exception e){
+
+            }
             return NIL;
         }
     }
