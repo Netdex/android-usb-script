@@ -167,7 +167,6 @@ public class HIDR {
         public int start() {
             if (mKeyboardLightProc != null)
                 throw new IllegalArgumentException("KB light proc already running");
-
             try {
                 mKeyboardLightProc = Runtime.getRuntime().exec("cat " + mDevKeyboard);
             } catch (IOException e) {

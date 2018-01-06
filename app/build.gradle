@@ -20,8 +20,8 @@ android {
     productFlavors {
     }
     compileOptions {
-        targetCompatibility 1.8
-        sourceCompatibility 1.8
+        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_1_8
     }
 }
 
@@ -30,7 +30,7 @@ dependencies {
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    compile 'com.android.support:appcompat-v7:27.0.2'
+    compile 'com.android.support:appcompat-v7:25.4.0'
     compile 'eu.chainfire:libsuperuser:1.0.0.+'
     compile 'org.luaj:luaj-jse:3.0.1'
     testCompile 'junit:junit:4.12'

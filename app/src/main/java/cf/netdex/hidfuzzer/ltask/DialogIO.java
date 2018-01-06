@@ -53,9 +53,7 @@ public class DialogIO {
     }
 
     public void clear() {
-        looper(() -> {
-            mLogView.get().setText("");
-        });
+        looper(() -> mLogView.get().setText(""));
     }
 
     public boolean should(final String title, final String prompt) {

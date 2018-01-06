@@ -9,6 +9,12 @@ import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -17,6 +23,8 @@ import cf.netdex.hidfuzzer.MainActivity;
 import cf.netdex.hidfuzzer.hid.HIDR;
 import cf.netdex.hidfuzzer.lua.LuaHIDBinding;
 import eu.chainfire.libsuperuser.Shell;
+
+import static cf.netdex.hidfuzzer.MainActivity.TAG;
 
 /**
  * Created by netdex on 1/16/2017.
@@ -72,6 +80,7 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         }
         mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
         mSU.addCommand("chmod 666 " + DEV_MOUSE);
+
         mH = new HIDR(mSU, DEV_KEYBOARD, DEV_MOUSE);
         mUserIO.clear();
         mUserIO.log("<b>-- started <i>" + mName + "</i></b>");
@@ -88,6 +97,7 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         try {
             mLuaChunk.call();
         } catch (LuaError e) {
+            e.printStackTrace();
             mUserIO.log("<b>LuaError:</b> " + e.getMessage());
         }
     }
@@ -125,7 +135,7 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
                     .setMinimalLogging(true)
                     .open((commandCode, exitCode, output) -> {
                         if (exitCode != Shell.OnCommandResultListener.SHELL_RUNNING) {
-                            Log.e(MainActivity.TAG, "Failed to open SU");
+                            Log.e(TAG, "Failed to open SU");
                             root[0] = false;
                         } else {
                             root[0] = true;
