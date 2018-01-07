@@ -1,4 +1,4 @@
-# HIDFuzzer
+# Android HID Script
 
 **Use at your own risk. For educational purposes only.**
 
@@ -23,8 +23,8 @@ A couple of demo applications are implemented:
 
 New demo applications can be added to `assets/scripts`. The API is pretty much self-documenting, just look at the existing demos to get a feel for how the API works.
 
-For people who want to implement HID functionality in their own apps, HID interfacing code available [here (HID.java)](https://github.com/Netdex/HIDFuzzer/blob/master/app/src/main/java/cf/netdex/hidfuzzer/hid/HID.java), 
-and a simple ease-of-use wrapper is available [here (HIDR.java)](https://github.com/Netdex/HIDFuzzer/blob/master/app/src/main/java/cf/netdex/hidfuzzer/hid/HIDR.java). The documentation should be enough to understand how it works.
+For people who want to implement HID functionality in their own apps, HID interfacing code available [here (HID.java)](https://github.com/Netdex/android-hid-script/blob/master/app/src/main/java/cf/netdex/hidfuzzer/hid/HID.java), 
+and a simple ease-of-use wrapper is available [here (HIDR.java)](https://github.com/Netdex/android-hid-script/blob/master/app/src/main/java/cf/netdex/hidfuzzer/hid/HIDR.java). The documentation should be enough to understand how it works.
 
 Requires ChainFire's [libsuperuser](https://github.com/Chainfire/libsuperuser) to keep a su shell open.
 
