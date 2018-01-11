@@ -21,7 +21,7 @@ On the news recently, use and abuse of the trust given to HID devices was demons
 
 ## Use Cases of Scripted HID Emulation
 - Automation of deployment solutions (ie. configuring computer BIOs settings in an automated fashion)
-- 
+- Mobile password managers that type in your credentials for you, on computers you do not trust
 - Use in computer espionage or social engineering attacks
 
 ## Features
