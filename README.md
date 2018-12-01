@@ -4,8 +4,10 @@
 
 An Android app that provides a simple Lua interface for emulating an HID device, on top of the existing `android-keyboard-gadget` patch by `pelya`. **Root access is required.**
 
-**Requires https://github.com/pelya/android-keyboard-gadget patch applied to the kernel to expose `/dev/hidg0` and `/dev/hidg1`.**  
-If you own a `jfltexx` device, forks of `android_kernel_samsung_jf` and `android_device_jf-common` are under my account which already have this patch applied. Otherwise, you would have to find an existing kernel or apply the patch and build the kernel yourself.
+## Requirements
+**This app will not work on every Android device.** If your Android OS has Linux Kernel version >= 3.18 and is compiled with configfs and f_hid, then the app can try to create usb gadgets for mouse and keyboard.
+
+If your Android OS is compiled with the [android-keyboard-gadget kernel patch](https://github.com/pelya/android-keyboard-gadget), then the app can use the usb gadgets it provides.
 
 ## HID Emulation?
 ```
@@ -15,7 +17,7 @@ hardware) for human interface devices such as keyboards, mice, game controllers 
 alphanumeric display devices.
                                                                       - Wikipedia
 ```
-With a small kernel patch, Android devices possess the ability to emulate HID devices. That is, they are able to act as any HID device (mouse, keyboard, MIDI keyboard, etc.), even simultaneously. The `android-keyboard-gadget` patch which this project relies on exposes two HID descriptors, for mouse and keyboard. This app provides a simple interface for scripting an HID device emulator, controlling the emulated mouse and keyboard programmatically. In addition, this app contains wrappers around the HID devices, allowing developers to easily integrate HID functionality into their own apps.
+This app provides an easy way to script HID interactions intuitively, with feedback. In addition, it contains wrappers around the HID devices allowing developers to easily integrate HID functionality into their own apps.
 
 On the news recently, use and abuse of the trust given to HID devices was demonstrated with the [BadUSB](https://www.wired.com/2014/07/usb-security/) attack, where USB devices were abused to utilize HID protocol to carry out nefarious actions.
 
