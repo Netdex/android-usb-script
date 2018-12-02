@@ -18,11 +18,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import cf.netdex.hidfuzzer.ltask.HIDTask;
+import cf.netdex.hidfuzzer.ltask.LuaTaskLoader;
 
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final String TAG = "tag_hidfuzzer";
+    public static final String TAG = "hidfuzzer";
     public static final String SCRIPT_PATH = "scripts";
 
     // I only made this map because I'm too lazy to make a custom list adapter
@@ -36,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         // load scripts
-        String[] scriptFilePaths = null;
+        String[] scriptFilePaths;
         try {
             scriptFilePaths = getAssets().list(SCRIPT_PATH);
 
@@ -51,8 +52,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // sort out the UI
-        final ToggleButton btnPoll = (ToggleButton) findViewById(R.id.btnPoll);
-        final Spinner spnTask = (Spinner) findViewById(R.id.spnTask);
+        final ToggleButton btnPoll = findViewById(R.id.btnPoll);
+        final Spinner spnTask = findViewById(R.id.spnTask);
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this, android.R.layout.simple_spinner_item, fTaskSpinnerItems);
@@ -63,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
             if (isChecked) {
                 String selectedTask = (String) spnTask.getSelectedItem();
                 String taskSrcFilePath = fTaskMap.get(selectedTask);
-                mRunningTask = createTaskFromLuaFile(selectedTask, taskSrcFilePath);
+                mRunningTask = LuaTaskLoader.createTaskFromLuaFile(this, selectedTask, taskSrcFilePath);
                 mRunningTask.execute();
             } else {
                 if (mRunningTask != null) {
@@ -74,20 +75,5 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public HIDTask createTaskFromLuaFile(String name, String path) {
-        try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open(path)));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null)
-                sb.append(line).append('\n');
-            br.close();
-            String src = sb.toString();
-            HIDTask task = new HIDTask(this, name, src);
-            return task;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
+
 }

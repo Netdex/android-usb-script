@@ -139,7 +139,7 @@ public class HIDR {
             boolean st = AP_MAP_SHIFT[(int) c];
             if (cd == -1)
                 throw new IllegalArgumentException("Given string contains illegal characters");
-            if (c == lc) ec |= hid_keyboard();
+            if (Character.toLowerCase(c) == Character.toLowerCase(lc)) ec |= hid_keyboard();
             ec |= hid_keyboard(st ? Input.KB.M.LSHIFT.c : 0, cd);
             if (d != 0) delay(d);
             lc = c;

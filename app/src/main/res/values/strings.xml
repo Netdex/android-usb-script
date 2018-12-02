@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">HIDFuzzer</string>
+    <string name="disabled">Disabled</string>
+    <string name="enabled">Enabled</string>
+    <string name="task">Task</string>
+    <string name="log_content">Log Content</string>
 </resources>

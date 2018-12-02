@@ -1,10 +1,9 @@
 package cf.netdex.hidfuzzer.hid;
 
-import android.util.Log;
-
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 
+import cf.netdex.hidfuzzer.util.Command;
 import eu.chainfire.libsuperuser.Shell;
 
 /**
@@ -26,17 +25,19 @@ public class HID {
      * C: Mouse Y-offset
      * D: Mouse wheel offset
      *
-     * @param sh     SU shell
+     * @param sh     SUExtensions shell
      * @param dev    Mouse device (/dev/hidg1)
      * @param offset HID mouse bytes
      * @return error code
      */
     public static int hid_mouse(Shell.Interactive sh, String dev, byte... offset) {
+        throw new UnsupportedOperationException("mouse descriptor not implemented"); // TODO
+        /*
         if (offset.length > 4)
             throw new IllegalArgumentException("Your mouse can only move in two dimensions");
         Arrays.fill(mouse_buf, (byte) 0);
         System.arraycopy(offset, 0, mouse_buf, 0, offset.length);
-        return write_bytes(sh, dev, mouse_buf);
+        return write_bytes(sh, dev, mouse_buf);*/
     }
 
     /**
@@ -47,7 +48,7 @@ public class HID {
      * B: Reserved
      * C: K 1; D: K 2; E: K 3; F: K 4; G: K 5; H: K 6;
      *
-     * @param sh   SU shell
+     * @param sh   SUExtensions shell
      * @param dev  KB device (/dev/hidg0)
      * @param keys HID keyboard bytes
      * @return error code
@@ -73,7 +74,7 @@ public class HID {
      * @return error code
      */
     private static int write_bytes(Shell.Interactive sh, String dev, byte[] arr) {
-        String bt = escapeBytes(arr);
+        String bt = Command.escapeBytes(arr);
         mErr[0] = -1;
         try {
             // run echo command to write to device as root
@@ -99,23 +100,7 @@ public class HID {
         return mErr[0];
     }
 
-    private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
 
-    /**
-     * Escapes a byte array into a string
-     * ex. [0x00, 0x04, 0x04] => "\x00\x04\x04"
-     *
-     * @param arr Byte array to escape
-     * @return Escaped byte array as string
-     */
-    private static String escapeBytes(byte[] arr) {
-        StringBuilder sb = new StringBuilder();
-        for (int j = 0; j < arr.length; j++) {
-            int v = arr[j] & 0xFF;
-            sb.append("\\x").append(hexArray[v >>> 4]).append(hexArray[v & 0x0F]);
-        }
-        return sb.toString();
-    }
 
 
 }

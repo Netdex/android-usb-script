@@ -15,6 +15,7 @@ import org.luaj.vm2.lib.TwoArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
 
+import cf.netdex.hidfuzzer.MainActivity;
 import cf.netdex.hidfuzzer.hid.HIDR;
 import cf.netdex.hidfuzzer.hid.Input;
 import cf.netdex.hidfuzzer.ltask.HIDTask;
@@ -79,7 +80,7 @@ public class LuaHIDBinding {
 
         @Override
         public LuaValue call() {
-            if(mKBLiteRoutine != null) throw new IllegalStateException("kblite already enabled!");
+            if (mKBLiteRoutine != null) throw new IllegalStateException("kblite already enabled!");
             mKBLiteRoutine = new LuaThread(globals, new kblite_coroutine_func(globals));
             kbliteStarted = true;
             Varargs result = mKBLiteRoutine.resume(NONE);
@@ -102,7 +103,7 @@ public class LuaHIDBinding {
 
         @Override
         public LuaValue call() {
-            if(!kbliteStarted) throw new LuaError("kblite not started!");
+            if (!kbliteStarted) throw new LuaError("kblite not started!");
             return mKBLiteRoutine.resume(NONE).arg(2);
         }
     }
@@ -259,14 +260,13 @@ public class LuaHIDBinding {
     }
 
     class progress extends OneArgFunction {
-
         @Override
         public LuaValue call(LuaValue status) {
             try {
                 HIDTask.RunState state = Enum.valueOf(HIDTask.RunState.class, status.tojstring().toUpperCase());
                 task.progress(state);
             } catch (Exception e) {
-
+                Log.e(MainActivity.TAG, "error on progress update", e);
             }
             return NIL;
         }

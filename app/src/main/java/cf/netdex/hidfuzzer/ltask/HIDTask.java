@@ -1,7 +1,6 @@
 package cf.netdex.hidfuzzer.ltask;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -9,19 +8,13 @@ import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.lang.ref.WeakReference;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
-import cf.netdex.hidfuzzer.MainActivity;
 import cf.netdex.hidfuzzer.hid.HIDR;
 import cf.netdex.hidfuzzer.lua.LuaHIDBinding;
+import cf.netdex.hidfuzzer.util.ConfigFSInterface;
+import cf.netdex.hidfuzzer.util.SUExtensions;
 import eu.chainfire.libsuperuser.Shell;
 
 import static cf.netdex.hidfuzzer.MainActivity.TAG;
@@ -46,7 +39,6 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
 
     private String mName;
     private String mSrc;
-    private Globals mLuaGlobals;
     private LuaValue mLuaChunk;
 
 
@@ -62,7 +54,7 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
     protected void onPreExecute() {
         try {
             mLuaHIDBinding = new LuaHIDBinding(this);
-            mLuaGlobals = LuaTaskLoader.createGlobals(this);
+            Globals mLuaGlobals = LuaTaskLoader.createGlobals(this);
             mLuaChunk = LuaTaskLoader.loadChunk(mLuaGlobals, mSrc);
         } catch (LuaError e) {
             mUserIO.log("<b>LuaError:</b> " + e.getMessage());
@@ -70,22 +62,93 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         }
     }
 
+    private ConfigFSInterface.HidGadgetConfig hidGadgetConfig = new ConfigFSInterface.HidGadgetConfig(
+            "Some Company",
+            "Frosted Flakes",
+            "0xa4ac",
+            "0x0525",
+            "Emulated HID Keyboard",
+            "Configuration 1",
+            120,
+            1,
+            1,
+            8,
+            new byte[]{
+                    (byte) 0x05, (byte) 0x01,    /* USAGE_PAGE (Generic Desktop)	          */
+                    (byte) 0x09, (byte) 0x06,    /* USAGE (Keyboard)                       */
+                    (byte) 0xa1, (byte) 0x01,    /* COLLECTION (Application)               */
+                    (byte) 0x05, (byte) 0x07,    /*   USAGE_PAGE (Keyboard)                */
+                    (byte) 0x19, (byte) 0xe0,    /*   USAGE_MINIMUM (Keyboard LeftControl) */
+                    (byte) 0x29, (byte) 0xe7,    /*   USAGE_MAXIMUM (Keyboard Right GUI)   */
+                    (byte) 0x15, (byte) 0x00,    /*   LOGICAL_MINIMUM (0)                  */
+                    (byte) 0x25, (byte) 0x01,    /*   LOGICAL_MAXIMUM (1)                  */
+                    (byte) 0x75, (byte) 0x01,    /*   REPORT_SIZE (1)                      */
+                    (byte) 0x95, (byte) 0x08,    /*   REPORT_COUNT (8)                     */
+                    (byte) 0x81, (byte) 0x02,    /*   INPUT (Data,Var,Abs)                 */
+                    (byte) 0x95, (byte) 0x01,    /*   REPORT_COUNT (1)                     */
+                    (byte) 0x75, (byte) 0x08,    /*   REPORT_SIZE (8)                      */
+                    (byte) 0x81, (byte) 0x03,    /*   INPUT (Cnst,Var,Abs)                 */
+                    (byte) 0x95, (byte) 0x05,    /*   REPORT_COUNT (5)                     */
+                    (byte) 0x75, (byte) 0x01,    /*   REPORT_SIZE (1)                      */
+                    (byte) 0x05, (byte) 0x08,    /*   USAGE_PAGE (LEDs)                    */
+                    (byte) 0x19, (byte) 0x01,    /*   USAGE_MINIMUM (Num Lock)             */
+                    (byte) 0x29, (byte) 0x05,    /*   USAGE_MAXIMUM (Kana)                 */
+                    (byte) 0x91, (byte) 0x02,    /*   OUTPUT (Data,Var,Abs)                */
+                    (byte) 0x95, (byte) 0x01,    /*   REPORT_COUNT (1)                     */
+                    (byte) 0x75, (byte) 0x03,    /*   REPORT_SIZE (3)                      */
+                    (byte) 0x91, (byte) 0x03,    /*   OUTPUT (Cnst,Var,Abs)                */
+                    (byte) 0x95, (byte) 0x06,    /*   REPORT_COUNT (6)                     */
+                    (byte) 0x75, (byte) 0x08,    /*   REPORT_SIZE (8)                      */
+                    (byte) 0x15, (byte) 0x00,    /*   LOGICAL_MINIMUM (0)                  */
+                    (byte) 0x25, (byte) 0x65,    /*   LOGICAL_MAXIMUM (101)                */
+                    (byte) 0x05, (byte) 0x07,    /*   USAGE_PAGE (Keyboard)                */
+                    (byte) 0x19, (byte) 0x00,    /*   USAGE_MINIMUM (Reserved)             */
+                    (byte) 0x29, (byte) 0x65,    /*   USAGE_MAXIMUM (Keyboard Application) */
+                    (byte) 0x81, (byte) 0x00,    /*   INPUT (Data,Ary,Abs)                 */
+                    (byte) 0xc0                  /* END_COLLECTION                         */
+            }
+    );
+    private ConfigFSInterface.UsbHidGadget usbHidGadget = null;
+
     @Override
     protected Void doInBackground(Void... params) {
+        mUserIO.clear();
+
         // I don't know why but apparently you can't initialize SU shell on UI thread
         mSU = createSU();
         if (mSU == null) {
             mUserIO.log("<b>! failed to obtain su !</b>");
             return null;
         }
-        mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
-        mSU.addCommand("chmod 666 " + DEV_MOUSE);
+//        if (SUExtensions.pathExists(mSU, DEV_KEYBOARD)) {
+//            // assume kernel patch exists // TODO we can't actually do this because configfs makes it
+//
+//        } else {
+        if (SUExtensions.pathExists(mSU, "/config")) {
+            Log.i(TAG, "no kernel patch detected, using configfs");
+            usbHidGadget = new ConfigFSInterface.UsbHidGadget(
+                    hidGadgetConfig, "/config", mUserIO);
+            usbHidGadget.createGadget(mSU);
+            if (!usbHidGadget.bind(mSU)) {
+                return null;
+            }
+        } else {
+            Log.e(TAG, "no method exists for accessing hid gadget");
+            return null;
+        }
+//        }
 
-        mH = new HIDR(mSU, DEV_KEYBOARD, DEV_MOUSE);
-        mUserIO.clear();
+        mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
+        //mSU.addCommand("chmod 666 " + DEV_MOUSE);
+
+        mH = new HIDR(mSU, DEV_KEYBOARD, "" /*DEV_MOUSE*/);
         mUserIO.log("<b>-- started <i>" + mName + "</i></b>");
         run();
         mUserIO.log("<b>-- ended <i>" + mName + "</i></b>");
+        if (usbHidGadget != null) {
+            usbHidGadget.remove(mSU);
+            usbHidGadget = null;
+        }
         return null;
     }
 
@@ -93,7 +156,7 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         mUserIO.log(mName + ": <b>" + s.name() + "</b>");
     }
 
-    public void run() {
+    private void run() {
         try {
             mLuaChunk.call();
         } catch (LuaError e) {
@@ -135,7 +198,7 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
                     .setMinimalLogging(true)
                     .open((commandCode, exitCode, output) -> {
                         if (exitCode != Shell.OnCommandResultListener.SHELL_RUNNING) {
-                            Log.e(TAG, "Failed to open SU");
+                            Log.e(TAG, "Failed to open SUExtensions");
                             root[0] = false;
                         } else {
                             root[0] = true;
