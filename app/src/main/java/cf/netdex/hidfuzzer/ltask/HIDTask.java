@@ -9,11 +9,17 @@ import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
 
 import java.lang.ref.WeakReference;
+import java.nio.file.Paths;
 import java.util.concurrent.CountDownLatch;
 
+import cf.netdex.hidfuzzer.configfs.UsbGadget;
+import cf.netdex.hidfuzzer.configfs.UsbGadgetParameters;
+import cf.netdex.hidfuzzer.configfs.function.UsbGadgetFunctionHid;
+import cf.netdex.hidfuzzer.configfs.function.UsbGadgetFunctionHidParameters;
+import cf.netdex.hidfuzzer.configfs.function.UsbGadgetFunctionMassStorage;
+import cf.netdex.hidfuzzer.configfs.function.UsbGadgetFunctionMassStorageParameters;
 import cf.netdex.hidfuzzer.hid.HIDR;
 import cf.netdex.hidfuzzer.lua.LuaHIDBinding;
-import cf.netdex.hidfuzzer.util.ConfigFSInterface;
 import cf.netdex.hidfuzzer.util.SUExtensions;
 import eu.chainfire.libsuperuser.Shell;
 
@@ -62,14 +68,17 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         }
     }
 
-    private ConfigFSInterface.HidGadgetConfig hidGadgetConfig = new ConfigFSInterface.HidGadgetConfig(
-            "Some Company",
-            "Frosted Flakes",
-            "0xa4ac",
+    private UsbGadgetParameters usbGadgetParams = new UsbGadgetParameters(
+            "Samsung",
+            "samsung123",
+            "0xa4a5",
             "0x0525",
-            "Emulated HID Keyboard",
+            "Mass Storage Gadget",
             "Configuration 1",
-            120,
+            120
+    );
+
+    private UsbGadgetFunctionHidParameters usbGadgetFcnHidParams = new UsbGadgetFunctionHidParameters(
             1,
             1,
             8,
@@ -108,7 +117,10 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
                     (byte) 0xc0                  /* END_COLLECTION                         */
             }
     );
-    private ConfigFSInterface.UsbHidGadget usbHidGadget = null;
+
+    private UsbGadgetFunctionMassStorageParameters usbGadgetFcnStorParams = null;
+
+    private UsbGadget usbGadget = null;
 
     @Override
     protected Void doInBackground(Void... params) {
@@ -117,37 +129,47 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         // I don't know why but apparently you can't initialize SU shell on UI thread
         mSU = createSU();
         if (mSU == null) {
-            mUserIO.log("<b>! failed to obtain su !</b>");
+            mUserIO.log("<b>! Failed to obtain SU !</b>");
             return null;
         }
 //        if (SUExtensions.pathExists(mSU, DEV_KEYBOARD)) {
-//            // assume kernel patch exists // TODO we can't actually do this because configfs makes it
-//
+//            // assume kernel patch exists
+//            // TODO we can't actually do this because configfs makes it
 //        } else {
-        if (SUExtensions.pathExists(mSU, "/config")) {
-            Log.i(TAG, "no kernel patch detected, using configfs");
-            usbHidGadget = new ConfigFSInterface.UsbHidGadget(
-                    hidGadgetConfig, "/config", mUserIO);
-            usbHidGadget.createGadget(mSU);
-            if (!usbHidGadget.bind(mSU)) {
+            if (SUExtensions.pathExists(mSU, "/config")) {
+                Log.i(TAG, "No kernel patch detected, using configfs");
+                usbGadget = new UsbGadget(usbGadgetParams, "keyboardgadget", "/config");
+                UsbGadgetFunctionHid fcnHid = new UsbGadgetFunctionHid(0, usbGadgetFcnHidParams);
+                usbGadget.addFunction(fcnHid);
+//                usbGadgetFcnStorParams =
+//                        new UsbGadgetFunctionMassStorageParameters(
+//                                /*getContext().getFilesDir().getAbsolutePath() + */"/data/local/tmp/mass_storage-lun0.img",
+//                                256);
+//                Log.i(TAG, usbGadgetFcnStorParams.file);
+//                UsbGadgetFunctionMassStorage fcnStor =
+//                        new UsbGadgetFunctionMassStorage(1, usbGadgetFcnStorParams);
+//                usbGadget.addFunction(fcnStor);
+                usbGadget.create(mSU);
+                if (!usbGadget.bind(mSU)) {
+                    mUserIO.log("<b>Could not bind usb gadget</b>");
+                    return null;
+                }
+            } else {
+                Log.e(TAG, "No method exists for accessing hid gadget");
                 return null;
             }
-        } else {
-            Log.e(TAG, "no method exists for accessing hid gadget");
-            return null;
-        }
 //        }
 
         mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
         //mSU.addCommand("chmod 666 " + DEV_MOUSE);
 
         mH = new HIDR(mSU, DEV_KEYBOARD, "" /*DEV_MOUSE*/);
-        mUserIO.log("<b>-- started <i>" + mName + "</i></b>");
+        mUserIO.log("<b>-- Started <i>" + mName + "</i></b>");
         run();
-        mUserIO.log("<b>-- ended <i>" + mName + "</i></b>");
-        if (usbHidGadget != null) {
-            usbHidGadget.remove(mSU);
-            usbHidGadget = null;
+        mUserIO.log("<b>-- Ended <i>" + mName + "</i></b>");
+        if (usbGadget != null) {
+            usbGadget.remove(mSU);
+            usbGadget = null;
         }
         return null;
     }

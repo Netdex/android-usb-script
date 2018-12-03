@@ -1,5 +1,7 @@
 package cf.netdex.hidfuzzer.util;
 
+import android.text.TextUtils;
+
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -50,7 +52,7 @@ public class SUExtensions {
             if (exitCode != 0) {
                 result[0] = null;
             } else {
-                result[0] = String.join("\n", output).split("\\s+");
+                result[0] = TextUtils.join("\n", output).split("\\s+");
             }
             latch.countDown();
         });
