@@ -11,11 +11,11 @@ public class SUExtensions {
     public static String readFile(Shell.Interactive su, String path) {
         CountDownLatch latch = new CountDownLatch(1);
         final String[] result = new String[1];
-        su.addCommand("cat " + path, 0, (commandCode, exitCode, output) -> {
+        su.addCommand("cat " + path, 0, (Shell.OnCommandResultListener) (commandCode, exitCode, output) -> {
             if (exitCode != 0) {
                 result[0] = null;
             } else {
-                result[0] = String.join("\n", output);
+                result[0] = TextUtils.join("\n", output);
             }
             latch.countDown();
         });
@@ -31,7 +31,7 @@ public class SUExtensions {
     public static boolean pathExists(Shell.Interactive su, String path) {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicBoolean result = new AtomicBoolean(false);
-        su.addCommand("ls " + path, 0, (commandCode, exitCode, output) -> {
+        su.addCommand("ls " + path, 0, (Shell.OnCommandResultListener) (commandCode, exitCode, output) -> {
             result.set(exitCode == 0);
             latch.countDown();
         });
@@ -48,7 +48,7 @@ public class SUExtensions {
         CountDownLatch latch = new CountDownLatch(1);
 
         final String[][] result = {null};
-        su.addCommand("ls " + path, 0, (commandCode, exitCode, output) -> {
+        su.addCommand("ls " + path, 0, (Shell.OnCommandResultListener) (commandCode, exitCode, output) -> {
             if (exitCode != 0) {
                 result[0] = null;
             } else {

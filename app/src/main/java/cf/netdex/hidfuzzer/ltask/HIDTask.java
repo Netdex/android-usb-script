@@ -218,9 +218,9 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
                     .setWantSTDERR(true)
                     .setWatchdogTimeout(5)
                     .setMinimalLogging(true)
-                    .open((commandCode, exitCode, output) -> {
-                        if (exitCode != Shell.OnCommandResultListener.SHELL_RUNNING) {
-                            Log.e(TAG, "Failed to open SUExtensions");
+                    .open((success, reason) -> {
+                        if (!success) {
+                            Log.e(TAG, "Failed to open SUExtensions: " + reason);
                             root[0] = false;
                         } else {
                             root[0] = true;
