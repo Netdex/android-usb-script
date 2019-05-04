@@ -83,7 +83,13 @@ public class HID {
 //            Log.d("A", c);
             sh.addCommand(c, 0, new Shell.OnCommandLineListener() {
                 @Override
-                public void onLine(String line) {
+                public void onSTDOUT(String line) {
+
+                }
+
+                @Override
+                public void onSTDERR(String line) {
+
                 }
 
                 @Override
