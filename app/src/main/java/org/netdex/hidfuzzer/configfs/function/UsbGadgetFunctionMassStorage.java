@@ -3,7 +3,6 @@ package org.netdex.hidfuzzer.configfs.function;
 import java.util.ArrayList;
 
 import org.netdex.hidfuzzer.util.Command;
-import org.netdex.hidfuzzer.util.SUExtensions;
 import eu.chainfire.libsuperuser.Shell;
 
 /*
@@ -17,12 +16,12 @@ public class UsbGadgetFunctionMassStorage extends UsbGadgetFunction {
     }
 
     @Override
-    public boolean create(Shell.Interactive su) {
+    public void create(Shell.Interactive su) throws Shell.ShellDiedException {
         UsbGadgetFunctionMassStorageParameters params =
                 (UsbGadgetFunctionMassStorageParameters) this.params;
 
         ArrayList<String> commands = new ArrayList<>();
-        if (!SUExtensions.pathExists(su, params.file)) {
+        if (!Command.pathExists(su, params.file)) {
             commands.add(String.format("dd bs=1048576 count=%d if=/dev/zero of=\"%s\"",
                     params.size, params.file));
         }
@@ -34,22 +33,17 @@ public class UsbGadgetFunctionMassStorage extends UsbGadgetFunction {
 
         su.addCommand(commands);
         su.waitForIdle();
-        return true;
     }
 
     @Override
-    public boolean bind(Shell.Interactive su) {
-        return true;
+    public void bind(Shell.Interactive su) {
     }
 
     @Override
-    public boolean remove(Shell.Interactive su) {
-        String[] commands = {
+    public void remove(Shell.Interactive su) throws Shell.ShellDiedException {
+        su.run(new String[]{
                 String.format("rm configs/c.1/mass_storage.usb%d", this.id),
                 String.format("rmdir functions/mass_storage.usb%d", this.id),
-        };
-        su.addCommand(commands);
-        su.waitForIdle();
-        return true;
+        });
     }
 }

@@ -18,17 +18,13 @@ public class UsbGadgetFunction {
      * It is guaranteed that the current directory will be the gadget directory
      *
      * @param su Instance of SU shell
-     * @return
      */
-    public boolean create(Shell.Interactive su) {
-        return false;
+    public void create(Shell.Interactive su) throws Shell.ShellDiedException {
     }
 
-    public boolean bind(Shell.Interactive su) {
-        return false;
+    public void bind(Shell.Interactive su) {
     }
 
-    public boolean remove(Shell.Interactive su) {
-        return false;
+    public void remove(Shell.Interactive su) throws Shell.ShellDiedException {
     }
 }

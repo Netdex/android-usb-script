@@ -5,16 +5,16 @@
 --- wallpaper.lua: Changes a Windows 10 desktop wallpaper
 ---
 ---
-local file = ask("Wallpaper to download?", "https://i.imgur.com/UhjsQ3x.jpg")
+local file = ask("Wallpaper to download?", "https://i.redd.it/ur1mqcbpxou51.png")
 
 while not cancelled() do
-    progress("idle")
+    log("idle")
 
     -- poll until /dev/hidg0 is writable
     while not cancelled() and not test() do delay(1000) end
     if cancelled() then break end
 
-    progress("running")
+    log("running")
     delay(1000)
 
     press_keys(kb.LSUPER, kb.R)
@@ -34,7 +34,7 @@ while not cancelled() do
             "[W.S]::SW(\"$Env:Temp\\b.jpg\")\n" ..
             "exit\n")
 
-    progress("done")
+    log("done")
     while not cancelled() and test() do
         delay(1000)
     end

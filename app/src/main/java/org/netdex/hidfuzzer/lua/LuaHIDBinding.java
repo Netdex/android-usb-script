@@ -1,7 +1,5 @@
 package org.netdex.hidfuzzer.lua;
 
-import android.util.Log;
-
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaFunction;
@@ -14,10 +12,11 @@ import org.luaj.vm2.lib.TwoArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
 
-import org.netdex.hidfuzzer.MainActivity;
-import org.netdex.hidfuzzer.hid.HIDR;
+import org.netdex.hidfuzzer.hid.HIDInterface;
 import org.netdex.hidfuzzer.hid.Input;
-import org.netdex.hidfuzzer.ltask.HIDTask;
+import org.netdex.hidfuzzer.ltask.AsyncIOBridge;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.luaj.vm2.LuaValue.*;
 
@@ -27,27 +26,27 @@ import static org.luaj.vm2.LuaValue.*;
 
 public class LuaHIDBinding {
 
-    private HIDTask task;
+    private final Globals globals_;
+    private final HIDInterface hid_;
+    private final AsyncIOBridge aio_;
+    private final AtomicBoolean cancelled_;
 
     private LuaThread mKBLiteRoutine;
     private boolean kbliteStarted = false;
 
-    private Globals globals;
-
-    public LuaHIDBinding(HIDTask task) {
-        this.task = task;
-    }
-
-    public void bind(Globals globals) {
-        this.globals = globals;
+    public LuaHIDBinding(Globals globals_, HIDInterface hid, AsyncIOBridge aio, AtomicBoolean cancelled) {
+        this.hid_ = hid;
+        this.aio_ = aio;
+        this.cancelled_ = cancelled;
+        this.globals_ = globals_;
 
         // put all lua bindings into scope
-        LuaFunction hidFuncs[] = {
+        LuaFunction[] hidFuncs = {
                 new delay(), new test(), new hid_mouse(), new hid_keyboard(), new press_keys(),
-                new send_string(), new cancelled(), new log(), new should(), new ask(), new say(), new progress()
+                new send_string(), new cancelled(), new log(), new should(), new ask()
         };
         for (LuaFunction f : hidFuncs) {
-            globals.set(f.name(), f);
+            globals_.set(f.name(), f);
         }
 
         // all constant enum values (please tell me if there is a better way to do this)
@@ -62,8 +61,8 @@ public class LuaHIDBinding {
         for (Input.KB.M ikm : Input.KB.M.values()) {
             keyCodes.set(ikm.name(), ikm.c);
         }
-        globals.set("ms", mouseButtons);
-        globals.set("kb", keyCodes);
+        globals_.set("ms", mouseButtons);
+        globals_.set("kb", keyCodes);
 
         // table for keyboard light coroutine
         LuaTable kbl = tableOf();
@@ -71,7 +70,7 @@ public class LuaHIDBinding {
         kbl.set("available", new kblite_available());
         kbl.set("begin", new kblite_begin());
 //        kbl.set("stop", new kblite_stop());
-        globals.set("kbl", kbl);
+        globals_.set("kbl", kbl);
     }
 
     class kblite_begin extends ZeroArgFunction {
@@ -79,20 +78,20 @@ public class LuaHIDBinding {
         @Override
         public LuaValue call() {
             if (mKBLiteRoutine != null) throw new IllegalStateException("kblite already enabled!");
-            mKBLiteRoutine = new LuaThread(globals, new kblite_coroutine_func(globals));
+            mKBLiteRoutine = new LuaThread(globals_, new kblite_coroutine_func(globals_));
             kbliteStarted = true;
             Varargs result = mKBLiteRoutine.resume(NONE);
             return result.arg1();
         }
     }
-//
+
 //    class kblite_stop extends ZeroArgFunction {
 //
 //        @Override
 //        public LuaValue call() {
 //            kbliteStarted = false;
 //            mKBLiteRoutine = null;
-//            task.getHIDR().getKeyboardLightListener().kill();
+//            hid_.getKeyboardLightListener().kill();
 //            return NIL;
 //        }
 //    }
@@ -110,14 +109,14 @@ public class LuaHIDBinding {
 
         @Override
         public LuaValue call() {
-            int val = task.getHIDR().getKeyboardLightListener().available();
+            int val = hid_.getKeyboardLightListener().available();
             return valueOf(val > 0);
         }
     }
 
     class kblite_coroutine_func extends ZeroArgFunction {
 
-        private Globals globals;
+        private final Globals globals;
 
         kblite_coroutine_func(Globals globals) {
             this.globals = globals;
@@ -125,7 +124,7 @@ public class LuaHIDBinding {
 
         @Override
         public LuaValue call() {
-            HIDR.KeyboardLightListener kll = task.getHIDR().getKeyboardLightListener();
+            HIDInterface.KeyboardLightListener kll = hid_.getKeyboardLightListener();
             kll.start();
             globals.yield(NONE);
             while (kll.available() >= 0) {
@@ -149,7 +148,7 @@ public class LuaHIDBinding {
         @Override
         public LuaValue call(LuaValue arg) {
             long d = arg.checklong();
-            task.getHIDR().delay(d);
+            hid_.delay(d);
             return NIL;
         }
     }
@@ -157,18 +156,18 @@ public class LuaHIDBinding {
     class test extends ZeroArgFunction {
         @Override
         public LuaValue call() {
-            return valueOf(task.getHIDR().test() == 0);
+            return valueOf(hid_.test() == 0);
         }
     }
 
     class hid_mouse extends VarArgFunction {
         @Override
         public Varargs invoke(Varargs args) {
-            byte a[] = new byte[args.narg()];
+            byte[] a = new byte[args.narg()];
             for (int i = 1; i <= args.narg(); ++i) {
                 a[i - 1] = (byte) args.arg(i).checkint();
             }
-            task.getHIDR().hid_mouse(a);
+            hid_.sendMouse(a);
             return NONE;
         }
     }
@@ -176,11 +175,11 @@ public class LuaHIDBinding {
     class hid_keyboard extends VarArgFunction {
         @Override
         public Varargs invoke(Varargs args) {
-            byte a[] = new byte[args.narg()];
+            byte[] a = new byte[args.narg()];
             for (int i = 1; i <= args.narg(); ++i) {
                 a[i - 1] = (byte) args.arg(i).checkint();
             }
-            task.getHIDR().hid_keyboard(a);
+            hid_.sendKeyboard(a);
             return NONE;
         }
     }
@@ -188,11 +187,11 @@ public class LuaHIDBinding {
     class press_keys extends VarArgFunction {
         @Override
         public Varargs invoke(Varargs args) {
-            byte a[] = new byte[args.narg()];
+            byte[] a = new byte[args.narg()];
             for (int i = 1; i <= args.narg(); ++i) {
                 a[i - 1] = (byte) args.arg(i).checkint();
             }
-            task.getHIDR().press_keys(a);
+            hid_.pressKeys(a);
             return NONE;
         }
     }
@@ -203,7 +202,7 @@ public class LuaHIDBinding {
         public LuaValue call(LuaValue string, LuaValue delay) {
             String s = string.checkjstring();
             int d = delay.isnil() ? 0 : delay.checkint();
-            task.getHIDR().send_string(s, d);
+            hid_.sendKeyboard(s, d);
             return NIL;
         }
     }
@@ -212,7 +211,7 @@ public class LuaHIDBinding {
 
         @Override
         public LuaValue call() {
-            return valueOf(task.isCancelled());
+            return valueOf(cancelled_.get());
         }
     }
 
@@ -221,7 +220,7 @@ public class LuaHIDBinding {
         @Override
         public LuaValue call(LuaValue arg) {
             String msg = arg.tojstring();
-            task.getIO().log(msg);
+            aio_.onLogMessage(msg);
             return NIL;
         }
     }
@@ -232,7 +231,7 @@ public class LuaHIDBinding {
         public LuaValue call(LuaValue title, LuaValue message) {
             String t = title.tojstring();
             String m = message.tojstring();
-            return valueOf(task.getIO().should(t, m));
+            return valueOf(aio_.onConfirm(t, m));
         }
     }
 
@@ -242,32 +241,7 @@ public class LuaHIDBinding {
         public LuaValue call(LuaValue title, LuaValue defaults) {
             String t = title.tojstring();
             String d = defaults.isnil() ? "" : defaults.tojstring();
-            return valueOf(task.getIO().ask(t, d));
+            return valueOf(aio_.onPrompt(t, d));
         }
     }
-
-    class say extends TwoArgFunction {
-
-        @Override
-        public LuaValue call(LuaValue title, LuaValue message) {
-            String t = title.tojstring();
-            String m = message.tojstring();
-            task.getIO().say(t, m);
-            return NIL;
-        }
-    }
-
-    class progress extends OneArgFunction {
-        @Override
-        public LuaValue call(LuaValue status) {
-            try {
-                HIDTask.RunState state = Enum.valueOf(HIDTask.RunState.class, status.tojstring().toUpperCase());
-                task.progress(state);
-            } catch (Exception e) {
-                Log.e(MainActivity.TAG, "error on progress update", e);
-            }
-            return NIL;
-        }
-    }
-
 }

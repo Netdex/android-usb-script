@@ -14,14 +14,14 @@ import eu.chainfire.libsuperuser.Shell;
  * Created by netdex on 1/16/2017.
  */
 
-public class HIDR {
-    private final Shell.Interactive mSU;
+public class HIDInterface {
+    private final Shell.Threaded mSU;
     private final String mDevKeyboard;
     private final String mDevMouse;
 
     private final KeyboardLightListener mKeyboardLightListener;
 
-    public HIDR(Shell.Interactive su, String devKeyboard, String devMouse) {
+    public HIDInterface(Shell.Threaded su, String devKeyboard, String devMouse) {
         this.mSU = su;
         this.mDevKeyboard = devKeyboard;
         this.mDevMouse = devMouse;
@@ -40,7 +40,7 @@ public class HIDR {
      * @return error code
      */
     public int test() {
-        return hid_keyboard((byte) 0, Input.KB.K.VOLUME_UP.c);
+        return sendKeyboard((byte) 0, Input.KB.K.VOLUME_UP.c);
     }
 
     /**
@@ -48,7 +48,7 @@ public class HIDR {
      * @param offset command byte[] to send, defined in HID.java
      * @return error code
      */
-    public int hid_mouse(byte... offset) {
+    public int sendMouse(byte... offset) {
         return HID.hid_mouse(mSU, mDevMouse, offset);
     }
 
@@ -57,7 +57,7 @@ public class HIDR {
      * @param keys command byte[] to send, defined in HID.java
      * @return error code
      */
-    public int hid_keyboard(byte... keys) {
+    public int sendKeyboard(byte... keys) {
         return HID.hid_keyboard(mSU, mDevKeyboard, keys);
     }
 
@@ -66,10 +66,10 @@ public class HIDR {
      * @param keys command byte[] to send, defined in HID.java
      * @return error code
      */
-    public int press_keys(byte... keys) {
+    public int pressKeys(byte... keys) {
         int ec = 0;
-        ec |= hid_keyboard(keys);
-        ec |= hid_keyboard();
+        ec |= sendKeyboard(keys);
+        ec |= sendKeyboard();
         return ec;
     }
 
@@ -121,8 +121,8 @@ public class HIDR {
      * @param s String to send
      * @return error code
      */
-    public int send_string(String s) {
-        return send_string(s, 0);
+    public int sendKeyboard(String s) {
+        return sendKeyboard(s, 0);
     }
 
     /**
@@ -131,7 +131,7 @@ public class HIDR {
      * @param d Delay after key press
      * @return error code
      */
-    public int send_string(String s, int d) {
+    public int sendKeyboard(String s, int d) {
         int ec = 0;
         char lc = Character.MIN_VALUE;
         for (char c : s.toCharArray()) {
@@ -139,12 +139,12 @@ public class HIDR {
             boolean st = AP_MAP_SHIFT[(int) c];
             if (cd == -1)
                 throw new IllegalArgumentException("Given string contains illegal characters");
-            if (Character.toLowerCase(c) == Character.toLowerCase(lc)) ec |= hid_keyboard();
-            ec |= hid_keyboard(st ? Input.KB.M.LSHIFT.c : 0, cd);
+            if (Character.toLowerCase(c) == Character.toLowerCase(lc)) ec |= sendKeyboard();
+            ec |= sendKeyboard(st ? Input.KB.M.LSHIFT.c : 0, cd);
             if (d != 0) delay(d);
             lc = c;
         }
-        ec |= hid_keyboard();
+        ec |= sendKeyboard();
         return ec;
     }
 

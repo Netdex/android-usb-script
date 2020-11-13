@@ -1,10 +1,12 @@
 package org.netdex.hidfuzzer.configfs;
 
+import java.nio.file.Paths;
 import java.util.ArrayList;
 
 import org.netdex.hidfuzzer.configfs.function.UsbGadgetFunction;
+import org.netdex.hidfuzzer.ltask.AsyncIOBridge;
 import org.netdex.hidfuzzer.util.Command;
-import org.netdex.hidfuzzer.util.SUExtensions;
+
 import eu.chainfire.libsuperuser.Shell;
 
 public class UsbGadget {
@@ -13,33 +15,36 @@ public class UsbGadget {
     public String name;
     public String configFsPath;
 
-    private ArrayList<UsbGadgetFunction> functions;
+    private ArrayList<UsbGadgetFunction> functions_;
 
     public boolean isBound = false;
-    private String oldGadgetUsingUDC = null;
-    private String oldGadgetUDCDriver = null;
+    private String oldGadgetUsingUDC_ = null;
+    private String oldGadgetUDCDriver_ = null;
 
     public UsbGadget(UsbGadgetParameters parameters, String name, String configFsPath) {
         this.params = parameters;
         this.name = name;
         this.configFsPath = configFsPath;
 
-        this.functions = new ArrayList<>();
+        this.functions_ = new ArrayList<>();
     }
 
-    public boolean addFunction(UsbGadgetFunction function) {
-        if (isBound) return false;
-        functions.add(function);
-        return true;
+    public void addFunction(UsbGadgetFunction function) {
+        if (isBound) {
+            // TODO allow adding new functions when already bound
+            throw new IllegalStateException("Cannot add new functions when already bound");
+        }
+        functions_.add(function);
     }
 
     public String getGadgetPath() {
         return String.format("%s/usb_gadget/%s", configFsPath, name);
     }
 
-    public boolean create(Shell.Interactive su) {
+    public void create(Shell.Interactive su) throws Shell.ShellDiedException {
         String gadgetPath = getGadgetPath();
-        String[] commands = {
+
+        su.run(new String[]{
                 "mkdir " + gadgetPath,
                 "cd " + gadgetPath,
                 Command.echoToFile(params.idProduct, "idProduct"),
@@ -56,94 +61,76 @@ public class UsbGadget {
                 "mkdir configs/c.1/strings/0x409",
                 Command.echoToFile(params.configName, "configs/c.1/strings/0x409/configuration"),
                 Command.echoToFile(String.valueOf(params.maxPowerMa), "configs/c.1/MaxPower"),
-        };
+        });
 
-        su.addCommand(commands);
-        su.waitForIdle();
-
-        for (UsbGadgetFunction function : this.functions)
-            if (!function.create(su))
-                return false;
-        return true;
+        for (UsbGadgetFunction function : this.functions_) {
+            function.create(su);
+        }
     }
 
-    public boolean bind(Shell.Interactive su) {
-        if (isBound)
-            return false;
-
-        String[] drivers = SUExtensions.ls(su, "/sys/class/udc");
-        if (drivers == null || drivers.length != 1) {
-            return false;
+    public void bind(Shell.Interactive su) throws Shell.ShellDiedException {
+        if (isBound) {
+            throw new IllegalStateException("Cannot bind USB gadgets that are already bound");
         }
-        String udc = drivers[0];
-        this.oldGadgetUDCDriver = udc;
+
+        ArrayList<String> drivers = Command.ls(su, "/sys/class/udc");
+        if (drivers.size() != 1) {
+            // TODO allow multiple USB drivers
+            throw new IllegalStateException("There must be exactly one USB driver");
+        }
+        String udc = drivers.get(0);
+        this.oldGadgetUDCDriver_ = udc;
 
         // Look for other gadgets using the same usb driver
-        ArrayList<String> commands = new ArrayList<>();
-
         String gadgetPath = getGadgetPath();
-        String[] otherUsbGadgets = SUExtensions.ls(su, gadgetPath + "/..");
-        if (otherUsbGadgets != null) {
-            for (String otherUsbGadgetPath : otherUsbGadgets) {
-                String udcPath = gadgetPath + "/../" + otherUsbGadgetPath + "/UDC";
-                String driver = SUExtensions.readFile(su, udcPath);
-                if (driver.equals(udc)) {
-                    // Backup the driver so we can restore it later
-                    this.oldGadgetUsingUDC = udcPath;
-                    commands.add(Command.echoToFile("", udcPath));
-                }
+        ArrayList<String> otherUsbGadgets = Command.ls(su, Paths.get(gadgetPath, "..").toString());
+        for (String otherUsbGadgetPath : otherUsbGadgets) {
+            String udcPath = Paths.get(gadgetPath, "..", otherUsbGadgetPath, "UDC").toString();
+            String driver = Command.readFile(su, udcPath);
+            if (driver.equals(udc)) {
+                // Backup the driver so we can restore it later
+                this.oldGadgetUsingUDC_ = udcPath;
+                su.run(Command.echoToFile("", udcPath));
+                break;
             }
         }
 
-        commands.add(Command.echoToFile(udc, gadgetPath + "/UDC"));
+        su.run(Command.echoToFile(udc, Paths.get(gadgetPath, "UDC").toString()));
 
-        su.addCommand(commands);
-        su.waitForIdle();
-
-        for (UsbGadgetFunction function : this.functions)
-            if (!function.bind(su))
-                return false;
+        for (UsbGadgetFunction function : this.functions_) {
+            function.bind(su);
+        }
 
         this.isBound = true;
-        return true;
     }
 
-    public boolean remove(Shell.Interactive su) {
-        if (!isBound)
-            return false;
-
-        ArrayList<String> commands = new ArrayList<>();
+    public void remove(Shell.Interactive su) throws Shell.ShellDiedException {
+        if (!isBound) {
+            throw new IllegalStateException("Cannot remove USB gadgets when none are installed");
+        }
         String gadgetPath = getGadgetPath();
-        String udcPath = gadgetPath + "/UDC";
+        String udcPath = Paths.get(gadgetPath, "UDC").toString();
 
         // Disable gadget
-        commands.add(Command.echoToFile("", udcPath));
-
+        su.run(Command.echoToFile("", udcPath));
         // Restore old driver if we need to
-        if (oldGadgetUsingUDC != null) {
-            commands.add(Command.echoToFile(oldGadgetUDCDriver, oldGadgetUsingUDC));
+        if (oldGadgetUsingUDC_ != null) {
+            su.run(Command.echoToFile(oldGadgetUDCDriver_, oldGadgetUsingUDC_));
         }
-        commands.add("cd " + gadgetPath);
+        su.run("cd " + gadgetPath);
 
-        su.addCommand(commands);
-        su.waitForIdle();
+        for (UsbGadgetFunction function : this.functions_) {
+            function.remove(su);
+        }
 
-        for (UsbGadgetFunction function : this.functions)
-            if (!function.remove(su))
-                return false;
-
-        String[] moreCommands = {
+        su.run(new String[]{
                 "rmdir configs/c.1/strings/0x409",
                 "rmdir configs/c.1",
                 "rmdir strings/0x409",
                 "cd ..",
                 "rmdir " + this.name
-        };
-
-        su.addCommand(moreCommands);
-        su.waitForIdle();
+        });
 
         this.isBound = false;
-        return true;
     }
 }

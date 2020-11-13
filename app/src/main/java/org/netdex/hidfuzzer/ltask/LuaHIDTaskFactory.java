@@ -6,26 +6,18 @@ package org.netdex.hidfuzzer.ltask;
 
 import android.content.Context;
 
-import org.luaj.vm2.Globals;
-import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.lib.jse.JsePlatform;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-public class LuaTaskLoader {
-    public static Globals createGlobals(HIDTask task) {
-        Globals globals = JsePlatform.standardGlobals();
-        task.getLuaHIDBinding().bind(globals);
-        return globals;
+public class LuaHIDTaskFactory {
+    private AsyncIOBridge dialogIO_;
+
+    public LuaHIDTaskFactory(AsyncIOBridge dialogIO) {
+        this.dialogIO_ = dialogIO;
     }
 
-    public static LuaValue loadChunk(Globals globals, String code) {
-        return globals.load(code);
-    }
-
-    public static HIDTask createTaskFromLuaFile(Context context, String name, String path) {
+    public LuaHIDTask createTaskFromLuaFile(Context context, String name, String path) {
         try {
             BufferedReader br = new BufferedReader(new InputStreamReader(context.getAssets().open(path)));
             StringBuilder sb = new StringBuilder();
@@ -34,7 +26,7 @@ public class LuaTaskLoader {
                 sb.append(line).append('\n');
             br.close();
             String src = sb.toString();
-            return new HIDTask(context, name, src);
+            return new LuaHIDTask(name, src, dialogIO_);
         } catch (IOException e) {
             e.printStackTrace();
             return null;

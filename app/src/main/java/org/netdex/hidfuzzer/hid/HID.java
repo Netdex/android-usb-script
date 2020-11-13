@@ -1,7 +1,6 @@
 package org.netdex.hidfuzzer.hid;
 
 import java.util.Arrays;
-import java.util.concurrent.CountDownLatch;
 
 import org.netdex.hidfuzzer.util.Command;
 import eu.chainfire.libsuperuser.Shell;
@@ -28,9 +27,9 @@ public class HID {
      * @param sh     SUExtensions shell
      * @param dev    Mouse device (/dev/hidg1)
      * @param offset HID mouse bytes
-     * @return error code
+     * @return Error code
      */
-    public static int hid_mouse(Shell.Interactive sh, String dev, byte... offset) {
+    public static int hid_mouse(Shell.Threaded sh, String dev, byte... offset) {
         throw new UnsupportedOperationException("mouse descriptor not implemented"); // TODO
         /*
         if (offset.length > 4)
@@ -51,9 +50,9 @@ public class HID {
      * @param sh   SUExtensions shell
      * @param dev  KB device (/dev/hidg0)
      * @param keys HID keyboard bytes
-     * @return error code
+     * @return Error code
      */
-    public static int hid_keyboard(Shell.Interactive sh, String dev, byte... keys) {
+    public static int hid_keyboard(Shell.Threaded sh, String dev, byte... keys) {
         if (keys.length > 7)
             throw new IllegalArgumentException("Cannot send more than 6 keys");
         Arrays.fill(keyboard_buf, (byte) 0);
@@ -62,51 +61,19 @@ public class HID {
         return write_bytes(sh, dev, keyboard_buf);
     }
 
-    // TODO I'm pretty sure this code could be more efficient
-    private static final int[] mErr = new int[1];
-
     /**
      * Writes bytes to a file with "echo -n -e [binary string] > file"
-     *
-     * @param sh  Interactive shell to send echo command
+     *  @param sh  Threaded shell to send echo command
      * @param dev File to write to
      * @param arr Bytes to write
-     * @return error code
+     * @return Exit code
      */
-    private static int write_bytes(Shell.Interactive sh, String dev, byte[] arr) {
-        String bt = Command.escapeBytes(arr);
-        mErr[0] = -1;
+    private static int write_bytes(Shell.Threaded sh, String dev, byte[] arr) {
         try {
-            // run echo command to write to device as root
-            final CountDownLatch latch = new CountDownLatch(1);
-            String c = "echo -n -e \"" + bt + "\" > " + dev;
-//            Log.d("A", c);
-            sh.addCommand(c, 0, new Shell.OnCommandLineListener() {
-                @Override
-                public void onSTDOUT(String line) {
-
-                }
-
-                @Override
-                public void onSTDERR(String line) {
-
-                }
-
-                @Override
-                public void onCommandResult(int commandCode, int exitCode) {
-                    mErr[0] = exitCode;
-                    latch.countDown();
-                }
-            });
-            latch.await();
-        } catch (InterruptedException ignored) {
-        } catch (Exception e) {
+            return sh.run(Command.echoToFile(Command.escapeBytes(arr), dev,true, false));
+        } catch (Shell.ShellDiedException e) {
             e.printStackTrace();
         }
-        return mErr[0];
+        return 0;
     }
-
-
-
-
 }

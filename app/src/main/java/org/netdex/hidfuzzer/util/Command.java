@@ -1,5 +1,13 @@
 package org.netdex.hidfuzzer.util;
 
+import androidx.annotation.NonNull;
+
+import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import eu.chainfire.libsuperuser.Shell;
+
 public class Command {
     public static String echoToFile(String s, String file, boolean escapes, boolean newLine) {
         return String.format("echo %s %s \"%s\" > \"%s\"", newLine ? "" : "-n", escapes ? "-e" : "", s, file);
@@ -26,5 +34,53 @@ public class Command {
             sb.append("\\x").append(hexArray[v >>> 4]).append(hexArray[v & 0x0F]);
         }
         return sb.toString();
+    }
+
+    public static String readFile(Shell.Interactive su, String path) {
+        StringBuilder sb = new StringBuilder();
+        AtomicBoolean first = new AtomicBoolean(true);
+        try {
+            su.run("cat " + path, new Shell.OnSyncCommandLineListener() {
+                @Override
+                public void onSTDERR(@NonNull String line) {
+
+                }
+
+                @Override
+                public void onSTDOUT(@NonNull String line) {
+                    if (!first.getAndSet(false)) {
+                        sb.append('\n');
+                    }
+                    sb.append(line);
+                }
+            });
+        } catch (Shell.ShellDiedException e) {
+            e.printStackTrace();
+        }
+        return sb.toString();
+    }
+
+    public static boolean pathExists(Shell.Interactive su, String path) throws Shell.ShellDiedException {
+        int exitCode = su.run("ls " + path);
+        return exitCode == 0;
+    }
+
+    public static ArrayList<String> ls(Shell.Interactive su, String path) throws Shell.ShellDiedException {
+        ArrayList<String> files = new ArrayList<>();
+        // ls, each file on separate line
+        su.run(String.format("ls -1A \"%s\"", path), new Shell.OnSyncCommandLineListener() {
+            @Override
+            public void onSTDERR(@NonNull String line) {
+
+            }
+
+            @Override
+            public void onSTDOUT(@NonNull String line) {
+                if (!line.isEmpty()) {
+                    files.add(line);
+                }
+            }
+        });
+        return files;
     }
 }
