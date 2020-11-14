@@ -1,8 +1,10 @@
 package org.netdex.hidfuzzer.hid;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 import org.netdex.hidfuzzer.util.Command;
+
 import eu.chainfire.libsuperuser.Shell;
 
 /**
@@ -27,9 +29,8 @@ public class HID {
      * @param sh     SUExtensions shell
      * @param dev    Mouse device (/dev/hidg1)
      * @param offset HID mouse bytes
-     * @return Error code
      */
-    public static int hid_mouse(Shell.Threaded sh, String dev, byte... offset) {
+    public static void sendHIDMouse(Shell.Threaded sh, String dev, byte... offset) {
         throw new UnsupportedOperationException("mouse descriptor not implemented"); // TODO
         /*
         if (offset.length > 4)
@@ -50,30 +51,26 @@ public class HID {
      * @param sh   SUExtensions shell
      * @param dev  KB device (/dev/hidg0)
      * @param keys HID keyboard bytes
-     * @return Error code
      */
-    public static int hid_keyboard(Shell.Threaded sh, String dev, byte... keys) {
+    public static void sendHIDKeyboard(Shell.Threaded sh, String dev, byte... keys) throws Shell.ShellDiedException, IOException {
         if (keys.length > 7)
             throw new IllegalArgumentException("Cannot send more than 6 keys");
         Arrays.fill(keyboard_buf, (byte) 0);
         if (keys.length > 0) keyboard_buf[0] = keys[0];
         if (keys.length > 1) System.arraycopy(keys, 1, keyboard_buf, 2, keys.length - 1);
-        return write_bytes(sh, dev, keyboard_buf);
+        write_bytes(sh, dev, keyboard_buf);
     }
 
     /**
      * Writes bytes to a file with "echo -n -e [binary string] > file"
-     *  @param sh  Threaded shell to send echo command
+     *
+     * @param sh  Threaded shell to send echo command
      * @param dev File to write to
      * @param arr Bytes to write
-     * @return Exit code
      */
-    private static int write_bytes(Shell.Threaded sh, String dev, byte[] arr) {
-        try {
-            return sh.run(Command.echoToFile(Command.escapeBytes(arr), dev,true, false));
-        } catch (Shell.ShellDiedException e) {
-            e.printStackTrace();
-        }
-        return 0;
+    private static void write_bytes(Shell.Threaded sh, String dev, byte[] arr) throws Shell.ShellDiedException, IOException {
+        int exitCode = sh.run(Command.echoToFile(Command.escapeBytes(arr), dev, true, false));
+        if (exitCode != 0)
+            throw new IOException(String.format("Could not write to device \"%s\"", dev));
     }
 }

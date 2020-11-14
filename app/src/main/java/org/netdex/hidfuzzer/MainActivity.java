@@ -16,9 +16,9 @@ import androidx.core.os.HandlerCompat;
 
 import org.netdex.hidfuzzer.gui.ConfirmDialog;
 import org.netdex.hidfuzzer.gui.PromptDialog;
-import org.netdex.hidfuzzer.ltask.AsyncIOBridge;
-import org.netdex.hidfuzzer.ltask.LuaHIDTask;
-import org.netdex.hidfuzzer.ltask.LuaHIDTaskFactory;
+import org.netdex.hidfuzzer.task.AsyncIOBridge;
+import org.netdex.hidfuzzer.task.LuaHIDTask;
+import org.netdex.hidfuzzer.task.LuaHIDTaskFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -128,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 if (mRunningTask != null) {
                     btnPoll.setEnabled(false);
-                    mRunningTask.setCancelled(true);
+                    mRunningTask.interrupt();
                 }
             }
         });

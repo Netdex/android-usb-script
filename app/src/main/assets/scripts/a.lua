@@ -5,21 +5,25 @@
 --- template.lua: generic template for "run after plug-in" style scripts
 ---
 
-while not cancelled() do
-    log("idle")
+usb = luausb.create({ id = 0, type = "keyboard" })
+kb = usb.dev[1]
 
-    -- poll until /dev/hidg0 is writable
-    while not cancelled() and not test() do delay(1000) end
-    if cancelled() then break end
+while true do
+    usb.log("idle")
 
-    log("running")
-    delay(1000)
-
-    send_string("test")
-
-    log("done")
-    while not cancelled() and test() do
-        delay(1000)
+    -- poll until writable
+    while not kb.test() do
+        usb.delay(1000)
     end
-    log("disconnected")
+
+    usb.log("running")
+    usb.delay(1000)
+
+    kb.send_string("test")
+
+    usb.log("done")
+    while kb.test() do
+        usb.delay(1000)
+    end
+    usb.log("disconnected")
 end

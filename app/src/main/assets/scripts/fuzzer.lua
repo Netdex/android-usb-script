@@ -5,6 +5,8 @@
 --- fuzzer.lua: fuzzes HID protocol
 ---
 
+-- TODO this script needs to be updated to new library version
+
 math.randomseed(os.time())
 
 while not cancelled() do

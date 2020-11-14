@@ -1,4 +1,4 @@
-package org.netdex.hidfuzzer.ltask;
+package org.netdex.hidfuzzer.task;
 
 /**
  * Created by netdex on 12/28/17.

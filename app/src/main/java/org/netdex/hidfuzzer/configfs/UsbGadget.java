@@ -4,73 +4,102 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 
 import org.netdex.hidfuzzer.configfs.function.UsbGadgetFunction;
-import org.netdex.hidfuzzer.ltask.AsyncIOBridge;
 import org.netdex.hidfuzzer.util.Command;
 
 import eu.chainfire.libsuperuser.Shell;
 
 public class UsbGadget {
+    public static class Parameters {
+        public String manufacturer;
+        public String serial;
+        public String idProduct;
+        public String idVendor;
+        public String product;
 
-    public UsbGadgetParameters params;
-    public String name;
-    public String configFsPath;
+        public String configName;
+
+        public static final Parameters DEFAULT = new Parameters(
+                "Samsung",
+                "samsung123",
+                "0xa4a5",
+                "0x0525",
+                "Mass Storage Gadget",
+                "Configuration 1"
+        );
+
+        public Parameters(String manufacturer, String serial,
+                          String idProduct, String idVendor, String product,
+                          String configName) {
+            this.manufacturer = manufacturer;
+            this.serial = serial;
+            this.idProduct = idProduct;
+            this.idVendor = idVendor;
+            this.product = product;
+            this.configName = configName;
+        }
+    }
+
+    public static final String CONFIG_DIR = "c.1";
+
+    private Parameters params_;
+    private String name_;
+    private String configFsPath_;
 
     private ArrayList<UsbGadgetFunction> functions_;
 
-    public boolean isBound = false;
     private String oldGadgetUsingUDC_ = null;
     private String oldGadgetUDCDriver_ = null;
 
-    public UsbGadget(UsbGadgetParameters parameters, String name, String configFsPath) {
-        this.params = parameters;
-        this.name = name;
-        this.configFsPath = configFsPath;
+    public UsbGadget(Parameters parameters, String name, String configFsPath) {
+        this.params_ = parameters;
+        this.name_ = name;
+        this.configFsPath_ = configFsPath;
 
         this.functions_ = new ArrayList<>();
     }
 
     public void addFunction(UsbGadgetFunction function) {
-        if (isBound) {
-            // TODO allow adding new functions when already bound
-            throw new IllegalStateException("Cannot add new functions when already bound");
-        }
         functions_.add(function);
     }
 
-    public String getGadgetPath() {
-        return String.format("%s/usb_gadget/%s", configFsPath, name);
-    }
-
-    public void create(Shell.Interactive su) throws Shell.ShellDiedException {
+    public void create(Shell.Threaded su) throws Shell.ShellDiedException {
         String gadgetPath = getGadgetPath();
+        if (Command.pathExists(su, gadgetPath)) {
+            throw new IllegalStateException("USB gadget already exists");
+        }
 
         su.run(new String[]{
                 "mkdir " + gadgetPath,
                 "cd " + gadgetPath,
-                Command.echoToFile(params.idProduct, "idProduct"),
-                Command.echoToFile(params.idVendor, "idVendor"),
+                Command.echoToFile(params_.idProduct, "idProduct"),
+                Command.echoToFile(params_.idVendor, "idVendor"),
                 Command.echoToFile("239", "bDeviceClass"),
                 Command.echoToFile("0x02", "bDeviceSubClass"),
                 Command.echoToFile("0x01", "bDeviceProtocol"),
 
                 "mkdir strings/0x409",
-                Command.echoToFile(params.serial, "strings/0x409/serialnumber"),
-                Command.echoToFile(params.manufacturer, "strings/0x409/manufacturer"),
-                Command.echoToFile(params.product, "strings/0x409/product"),
-                "mkdir configs/c.1",
-                "mkdir configs/c.1/strings/0x409",
-                Command.echoToFile(params.configName, "configs/c.1/strings/0x409/configuration"),
-                Command.echoToFile(String.valueOf(params.maxPowerMa), "configs/c.1/MaxPower"),
+                Command.echoToFile(params_.serial, "strings/0x409/serialnumber"),
+                Command.echoToFile(params_.manufacturer, "strings/0x409/manufacturer"),
+                Command.echoToFile(params_.product, "strings/0x409/product"),
+
+                String.format("mkdir \"configs/%s\"", CONFIG_DIR),
+                String.format("mkdir \"configs/%s/strings/0x409\"", CONFIG_DIR),
+                Command.echoToFile(params_.configName, String.format("configs/%s/strings/0x409/configuration", CONFIG_DIR)),
         });
 
         for (UsbGadgetFunction function : this.functions_) {
-            function.create(su);
+            function.create(su, gadgetPath);
         }
     }
 
-    public void bind(Shell.Interactive su) throws Shell.ShellDiedException {
-        if (isBound) {
-            throw new IllegalStateException("Cannot bind USB gadgets that are already bound");
+    public void bind(Shell.Threaded su) throws Shell.ShellDiedException {
+        String gadgetPath = getGadgetPath();
+        if (isBound(su)) {
+            throw new IllegalStateException("USB gadget is already bound to UDC");
+        }
+
+        for (UsbGadgetFunction function : this.functions_) {
+            function.bind(su, gadgetPath, CONFIG_DIR);
         }
 
         ArrayList<String> drivers = Command.ls(su, "/sys/class/udc");
@@ -82,7 +111,6 @@ public class UsbGadget {
         this.oldGadgetUDCDriver_ = udc;
 
         // Look for other gadgets using the same usb driver
-        String gadgetPath = getGadgetPath();
         ArrayList<String> otherUsbGadgets = Command.ls(su, Paths.get(gadgetPath, "..").toString());
         for (String otherUsbGadgetPath : otherUsbGadgets) {
             String udcPath = Paths.get(gadgetPath, "..", otherUsbGadgetPath, "UDC").toString();
@@ -96,31 +124,34 @@ public class UsbGadget {
         }
 
         su.run(Command.echoToFile(udc, Paths.get(gadgetPath, "UDC").toString()));
-
-        for (UsbGadgetFunction function : this.functions_) {
-            function.bind(su);
-        }
-
-        this.isBound = true;
     }
 
-    public void remove(Shell.Interactive su) throws Shell.ShellDiedException {
-        if (!isBound) {
-            throw new IllegalStateException("Cannot remove USB gadgets when none are installed");
+    public void unbind(Shell.Threaded su) throws Shell.ShellDiedException {
+        if (!isBound(su)) {
+            throw new IllegalStateException("USB gadget is not bound to UDC");
         }
-        String gadgetPath = getGadgetPath();
-        String udcPath = Paths.get(gadgetPath, "UDC").toString();
 
         // Disable gadget
-        su.run(Command.echoToFile("", udcPath));
+        su.run(Command.echoToFile("", getUDCPath()));
         // Restore old driver if we need to
         if (oldGadgetUsingUDC_ != null) {
             su.run(Command.echoToFile(oldGadgetUDCDriver_, oldGadgetUsingUDC_));
         }
-        su.run("cd " + gadgetPath);
+
+        String gadgetPath = getGadgetPath();
+        for (UsbGadgetFunction function : this.functions_) {
+            function.unbind(su, gadgetPath, CONFIG_DIR);
+        }
+    }
+
+    public void remove(Shell.Threaded su) throws Shell.ShellDiedException {
+        String gadgetPath = getGadgetPath();
+        if (!Command.pathExists(su, gadgetPath)) {
+            throw new IllegalStateException("USB gadget does not exist");
+        }
 
         for (UsbGadgetFunction function : this.functions_) {
-            function.remove(su);
+            function.remove(su, gadgetPath);
         }
 
         su.run(new String[]{
@@ -128,9 +159,24 @@ public class UsbGadget {
                 "rmdir configs/c.1",
                 "rmdir strings/0x409",
                 "cd ..",
-                "rmdir " + this.name
+                "rmdir " + this.name_
         });
-
-        this.isBound = false;
     }
+
+    public String getGadgetPath() {
+        return String.format("%s/usb_gadget/%s", configFsPath_, name_);
+    }
+
+    public String getUDCPath() {
+        return Paths.get(getGadgetPath(), "UDC").toString();
+    }
+
+    public String getUDC(Shell.Threaded su) {
+        return Command.readFile(su, getUDCPath());
+    }
+
+    public boolean isBound(Shell.Threaded su) {
+        return !getUDC(su).isEmpty();
+    }
+
 }

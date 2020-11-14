@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.netdex.hidfuzzer.MainActivity;
+
 import eu.chainfire.libsuperuser.Shell;
 
 /**
@@ -15,62 +16,55 @@ import eu.chainfire.libsuperuser.Shell;
  */
 
 public class HIDInterface {
-    private final Shell.Threaded mSU;
-    private final String mDevKeyboard;
-    private final String mDevMouse;
+    private final Shell.Threaded su_;
+    private final String devicePath_;
 
-    private final KeyboardLightListener mKeyboardLightListener;
+//    private final KeyboardLightListener mKeyboardLightListener;
 
-    public HIDInterface(Shell.Threaded su, String devKeyboard, String devMouse) {
-        this.mSU = su;
-        this.mDevKeyboard = devKeyboard;
-        this.mDevMouse = devMouse;
-        this.mKeyboardLightListener = new KeyboardLightListener();
-    }
-
-    public void delay(long m) {
-        try {
-            Thread.sleep(m);
-        } catch (InterruptedException ignored) {
-        }
+    public HIDInterface(Shell.Threaded su, String devicePath) {
+        this.su_ = su;
+        this.devicePath_ = devicePath;
+//        this.mKeyboardLightListener = new KeyboardLightListener();
     }
 
     /**
      * Tests if current HID device is connected by sending a dummy key
-     * @return error code
      */
-    public int test() {
-        return sendKeyboard((byte) 0, Input.KB.K.VOLUME_UP.c);
+    public boolean test() throws Shell.ShellDiedException {
+        try {
+            sendKeyboard((byte) 0, Input.KB.K.VOLUME_UP.c);
+        } catch (IOException e) {
+            return false;
+        }
+        return true;
     }
 
     /**
      * Sends mouse command
+     *
      * @param offset command byte[] to send, defined in HID.java
-     * @return error code
      */
-    public int sendMouse(byte... offset) {
-        return HID.hid_mouse(mSU, mDevMouse, offset);
+    public void sendMouse(byte... offset) {
+        HID.sendHIDMouse(su_, devicePath_, offset);
     }
 
     /**
      * Sends keyboard command
+     *
      * @param keys command byte[] to send, defined in HID.java
-     * @return error code
      */
-    public int sendKeyboard(byte... keys) {
-        return HID.hid_keyboard(mSU, mDevKeyboard, keys);
+    public void sendKeyboard(byte... keys) throws Shell.ShellDiedException, IOException {
+        HID.sendHIDKeyboard(su_, devicePath_, keys);
     }
 
     /**
      * Presses keys and releases it
+     *
      * @param keys command byte[] to send, defined in HID.java
-     * @return error code
      */
-    public int pressKeys(byte... keys) {
-        int ec = 0;
-        ec |= sendKeyboard(keys);
-        ec |= sendKeyboard();
-        return ec;
+    public void pressKeys(byte... keys) throws Shell.ShellDiedException, IOException {
+        sendKeyboard(keys);
+        sendKeyboard();
     }
 
     /* Begin string to code conversion tables */
@@ -118,20 +112,20 @@ public class HIDInterface {
 
     /**
      * Sends a string to the keyboard with no delay
+     *
      * @param s String to send
-     * @return error code
      */
-    public int sendKeyboard(String s) {
-        return sendKeyboard(s, 0);
+    public void sendKeyboard(String s) throws Shell.ShellDiedException, IOException, InterruptedException {
+        sendKeyboard(s, 0);
     }
 
     /**
      * Sends a string to the keyboard
+     *
      * @param s String to send
      * @param d Delay after key press
-     * @return error code
      */
-    public int sendKeyboard(String s, int d) {
+    public void sendKeyboard(String s, int d) throws Shell.ShellDiedException, IOException, InterruptedException {
         int ec = 0;
         char lc = Character.MIN_VALUE;
         for (char c : s.toCharArray()) {
@@ -139,103 +133,106 @@ public class HIDInterface {
             boolean st = AP_MAP_SHIFT[(int) c];
             if (cd == -1)
                 throw new IllegalArgumentException("Given string contains illegal characters");
-            if (Character.toLowerCase(c) == Character.toLowerCase(lc)) ec |= sendKeyboard();
-            ec |= sendKeyboard(st ? Input.KB.M.LSHIFT.c : 0, cd);
-            if (d != 0) delay(d);
+            if (Character.toLowerCase(c) == Character.toLowerCase(lc)) sendKeyboard();
+            sendKeyboard(st ? Input.KB.M.LSHIFT.c : 0, cd);
+            if (d != 0){
+                Thread.sleep(d);
+            }
             lc = c;
         }
-        ec |= sendKeyboard();
-        return ec;
+        sendKeyboard();
     }
 
-    public KeyboardLightListener getKeyboardLightListener() {
-        return mKeyboardLightListener;
-    }
+//    public KeyboardLightListener getKeyboardLightListener() {
+//        return mKeyboardLightListener;
+//    }
 
     /**
      * Listens for changes in keyboard lights (num lock, caps lock, scroll lock)
      */
-    public class KeyboardLightListener {
-        private Process mKeyboardLightProc;
-        private InputStream mKeyboardLightStream;
-        private int mLastLightState;
-
-        /**
-         * Begins keyboard light listening process
-         * @return error code
-         */
-        public int start() {
-            if (mKeyboardLightProc != null)
-                throw new IllegalArgumentException("KB light proc already running");
-            try {
-                mKeyboardLightProc = Runtime.getRuntime().exec("cat " + mDevKeyboard);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            if (mKeyboardLightProc != null) {
-                mKeyboardLightStream = mKeyboardLightProc.getInputStream();
-                return 0;
-            } else {
-                return 1;
-            }
-        }
-
-        /**
-         * Bitmask of light states:
-         * NUM      0x01
-         * CAPS     0x02
-         * SCROLL   0x04
-         *
-         * @return bitmask of light states
-         */
-        public int read() {
-            try {
-                if (mKeyboardLightStream != null)
-                    return mLastLightState = mKeyboardLightStream.read();
-                return -1;
-            } catch (IOException e) {
-                Log.d(MainActivity.TAG, "Light stream forcibly terminated");
-                return -1;
-            }
-        }
-
-        /**
-         * Checks for availability of new data from keyboard light stream
-         * @return bytes available to read, or -1 if null
-         */
-        public int available() {
-            if (mKeyboardLightStream != null) {
-                try {
-                    return mKeyboardLightStream.available();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            return -1;
-        }
-
-        /**
-         * Kill the listener process and tidy up
-         */
-        public void kill() {
-            if (mKeyboardLightStream != null) {
-                try {
-                    mKeyboardLightStream.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                mKeyboardLightStream = null;
-            }
-
-            // close the stream before killing the process
-            if (mKeyboardLightProc != null) {
-                mKeyboardLightProc.destroy();
-                mKeyboardLightProc = null;
-            }
-        }
-
-        public int getLastLightState() {
-            return mLastLightState;
-        }
-    }
+//    public class KeyboardLightListener {
+//        private Process mKeyboardLightProc;
+//        private InputStream mKeyboardLightStream;
+//        private int mLastLightState;
+//
+//        /**
+//         * Begins keyboard light listening process
+//         *
+//         * @return error code
+//         */
+//        public int start() {
+//            if (mKeyboardLightProc != null)
+//                throw new IllegalArgumentException("KB light proc already running");
+//            try {
+//                mKeyboardLightProc = Runtime.getRuntime().exec("cat " + devicePath_);
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//            if (mKeyboardLightProc != null) {
+//                mKeyboardLightStream = mKeyboardLightProc.getInputStream();
+//                return 0;
+//            } else {
+//                return 1;
+//            }
+//        }
+//
+//        /**
+//         * Bitmask of light states:
+//         * NUM      0x01
+//         * CAPS     0x02
+//         * SCROLL   0x04
+//         *
+//         * @return bitmask of light states
+//         */
+//        public int read() {
+//            try {
+//                if (mKeyboardLightStream != null)
+//                    return mLastLightState = mKeyboardLightStream.read();
+//                return -1;
+//            } catch (IOException e) {
+//                Log.d(MainActivity.TAG, "Light stream forcibly terminated");
+//                return -1;
+//            }
+//        }
+//
+//        /**
+//         * Checks for availability of new data from keyboard light stream
+//         *
+//         * @return bytes available to read, or -1 if null
+//         */
+//        public int available() {
+//            if (mKeyboardLightStream != null) {
+//                try {
+//                    return mKeyboardLightStream.available();
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//            return -1;
+//        }
+//
+//        /**
+//         * Kill the listener process and tidy up
+//         */
+//        public void kill() {
+//            if (mKeyboardLightStream != null) {
+//                try {
+//                    mKeyboardLightStream.close();
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//                mKeyboardLightStream = null;
+//            }
+//
+//            // close the stream before killing the process
+//            if (mKeyboardLightProc != null) {
+//                mKeyboardLightProc.destroy();
+//                mKeyboardLightProc = null;
+//            }
+//        }
+//
+//        public int getLastLightState() {
+//            return mLastLightState;
+//        }
+//    }
 }

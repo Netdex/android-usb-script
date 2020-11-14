@@ -9,14 +9,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import eu.chainfire.libsuperuser.Shell;
 
 public class Command {
-    public static String echoToFile(String s, String file, boolean escapes, boolean newLine) {
-        return String.format("echo %s %s \"%s\" > \"%s\"", newLine ? "" : "-n", escapes ? "-e" : "", s, file);
+    public static String echoToFile(String s, String file, boolean escape, boolean newLine) {
+        return String.format("echo %s %s \"%s\" > \"%s\"", newLine ? "" : "-n", escape ? "-e" : "", s, file);
     }
 
     public static String echoToFile(String s, String file) {
         return echoToFile(s, file, false, true);
     }
-
 
     private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
 
@@ -29,8 +28,8 @@ public class Command {
      */
     public static String escapeBytes(byte[] arr) {
         StringBuilder sb = new StringBuilder();
-        for (int j = 0; j < arr.length; j++) {
-            int v = arr[j] & 0xFF;
+        for (byte b : arr) {
+            int v = b & 0xFF;
             sb.append("\\x").append(hexArray[v >>> 4]).append(hexArray[v & 0x0F]);
         }
         return sb.toString();
@@ -40,7 +39,7 @@ public class Command {
         StringBuilder sb = new StringBuilder();
         AtomicBoolean first = new AtomicBoolean(true);
         try {
-            su.run("cat " + path, new Shell.OnSyncCommandLineListener() {
+            su.run(String.format("cat \"%s\"", path), new Shell.OnSyncCommandLineListener() {
                 @Override
                 public void onSTDERR(@NonNull String line) {
 
@@ -61,7 +60,7 @@ public class Command {
     }
 
     public static boolean pathExists(Shell.Interactive su, String path) throws Shell.ShellDiedException {
-        int exitCode = su.run("ls " + path);
+        int exitCode = su.run(String.format("ls \"%s\"", path));
         return exitCode == 0;
     }
 

