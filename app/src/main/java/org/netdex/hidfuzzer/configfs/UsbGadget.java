@@ -155,11 +155,11 @@ public class UsbGadget {
         }
 
         su.run(new String[]{
-                "rmdir configs/c.1/strings/0x409",
-                "rmdir configs/c.1",
+                String.format("rmdir \"configs/%s/strings/0x409\"", CONFIG_DIR),
+                String.format("rmdir \"configs/%s\"", CONFIG_DIR),
                 "rmdir strings/0x409",
                 "cd ..",
-                "rmdir " + this.name_
+                String.format("rmdir \"%s\"", this.name_)
         });
     }
 

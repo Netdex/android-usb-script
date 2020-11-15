@@ -1,5 +1,6 @@
 package org.netdex.hidfuzzer;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -16,16 +17,17 @@ import androidx.core.os.HandlerCompat;
 
 import org.netdex.hidfuzzer.gui.ConfirmDialog;
 import org.netdex.hidfuzzer.gui.PromptDialog;
-import org.netdex.hidfuzzer.task.AsyncIOBridge;
-import org.netdex.hidfuzzer.task.LuaHIDTask;
-import org.netdex.hidfuzzer.task.LuaHIDTaskFactory;
+import org.netdex.hidfuzzer.service.LuaUsbService;
+import org.netdex.hidfuzzer.service.LuaUsbServiceConnection;
+import org.netdex.hidfuzzer.task.AsyncIoBridge;
+import org.netdex.hidfuzzer.task.LuaUsbTask;
+import org.netdex.hidfuzzer.task.LuaUsbTaskFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -37,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
     static final HashMap<String, String> fTaskMap = new HashMap<>();
     static final ArrayList<String> fTaskSpinnerItems = new ArrayList<>();
 
-    private LuaHIDTask mRunningTask;
+    private LuaUsbTask mRunningTask;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -71,11 +73,11 @@ public class MainActivity extends AppCompatActivity {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spnTask.setAdapter(adapter);
 
-        AsyncIOBridge dialogIO = new AsyncIOBridge() {
+        AsyncIoBridge dialogIO = new AsyncIoBridge() {
             @Override
             public void onLogMessage(String s) {
                 handler.post(() -> {
-                    logView.append(Html.fromHtml(s));
+                    logView.append(Html.fromHtml(s, Html.FROM_HTML_MODE_COMPACT));
                     logView.append("\n");
                     scrollView.fullScroll(View.FOCUS_DOWN);
                 });
@@ -85,20 +87,6 @@ public class MainActivity extends AppCompatActivity {
             public void onLogClear() {
                 handler.post(() -> {
                     logView.setText("");
-                });
-            }
-
-            @Override
-            public void onSignal(Signal signal) {
-                handler.post(()->{
-                    switch(signal){
-                        case DONE:
-                            btnPoll.setChecked(false);
-                            btnPoll.setEnabled(true);
-                            break;
-                        default:
-                            throw new IllegalStateException("Unexpected value: " + signal);
-                    }
                 });
             }
 
@@ -115,24 +103,30 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        LuaHIDTaskFactory luaHIDTaskFactory = new LuaHIDTaskFactory(dialogIO);
-
-        ExecutorService executorService = Executors.newCachedThreadPool();
+        AtomicReference<LuaUsbServiceConnection> activeServiceConn = new AtomicReference<>();
+        LuaUsbTaskFactory luaUsbTaskFactory = new LuaUsbTaskFactory(dialogIO);
 
         btnPoll.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 String selectedTask = (String) spnTask.getSelectedItem();
                 String taskSrcFilePath = fTaskMap.get(selectedTask);
-                mRunningTask = luaHIDTaskFactory.createTaskFromLuaFile(this, selectedTask, taskSrcFilePath);
-                executorService.execute(mRunningTask);
+
+                Intent serviceIntent = new Intent(this, LuaUsbService.class);
+                activeServiceConn.set(
+                        new LuaUsbServiceConnection(
+                                luaUsbTaskFactory.createTaskFromLuaFile(
+                                        MainActivity.this, selectedTask, taskSrcFilePath),
+                                () -> handler.post(() -> {
+                                    btnPoll.setChecked(false);
+                                    btnPoll.setEnabled(true);
+                                })));
+                bindService(serviceIntent, activeServiceConn.get(), BIND_AUTO_CREATE);
             } else {
-                if (mRunningTask != null) {
+                if (activeServiceConn != null) {
                     btnPoll.setEnabled(false);
-                    mRunningTask.interrupt();
+                    unbindService(activeServiceConn.get());
                 }
             }
         });
     }
-
-
 }

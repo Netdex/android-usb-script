@@ -16,7 +16,7 @@ while true do
     usb.log("idle")
 
     -- poll until /dev/hidg0 is writable
-    while kb.test() do
+    while not kb.test() do
         usb.delay(1000)
     end
 
@@ -55,7 +55,7 @@ while true do
 
     usb.log("done")
     while kb.test() do
-        delay(1000)
+        usb.delay(1000)
     end
     usb.log("disconnected")
 end

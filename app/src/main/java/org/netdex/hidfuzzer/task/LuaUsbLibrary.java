@@ -1,4 +1,4 @@
-package org.netdex.hidfuzzer.lua;
+package org.netdex.hidfuzzer.task;
 
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
@@ -12,9 +12,8 @@ import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
 import org.netdex.hidfuzzer.configfs.UsbGadget;
 import org.netdex.hidfuzzer.configfs.function.UsbGadgetFunctionHid;
-import org.netdex.hidfuzzer.hid.HIDInterface;
-import org.netdex.hidfuzzer.hid.Input;
-import org.netdex.hidfuzzer.task.AsyncIOBridge;
+import org.netdex.hidfuzzer.function.HidInterface;
+import org.netdex.hidfuzzer.function.Input;
 
 import java.io.IOException;
 
@@ -24,17 +23,17 @@ import eu.chainfire.libsuperuser.Shell;
  * Created by netdex on 12/28/17.
  */
 
-public class LuaHIDBinding {
+public class LuaUsbLibrary {
 
     private final Globals globals_;
     private final Shell.Threaded su_;
     private final UsbGadget usbGadget_;
-    private final AsyncIOBridge aio_;
+    private final AsyncIoBridge aio_;
 
 //    private LuaThread mKBLiteRoutine;
 //    private boolean kbliteStarted = false;
 
-    public LuaHIDBinding(Globals globals_, Shell.Threaded su, UsbGadget usbGadget, AsyncIOBridge aio) {
+    public LuaUsbLibrary(Globals globals_, Shell.Threaded su, UsbGadget usbGadget, AsyncIoBridge aio) {
         this.aio_ = aio;
         this.su_ = su;
         this.usbGadget_ = usbGadget;
@@ -139,11 +138,11 @@ public class LuaHIDBinding {
         }
 
         class keyboard extends ZeroArgFunction {
-            private final HIDInterface hid_;
+            private final HidInterface hid_;
 
             public keyboard(int id) {
                 String devicePath = String.format("/dev/hidg%d", id);
-                this.hid_ = new HIDInterface(su_, devicePath);
+                this.hid_ = new HidInterface(su_, devicePath);
             }
 
             @Override

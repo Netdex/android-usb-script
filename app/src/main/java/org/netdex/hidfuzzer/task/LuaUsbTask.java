@@ -5,7 +5,6 @@ import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.lib.jse.JsePlatform;
 import org.netdex.hidfuzzer.configfs.UsbGadget;
-import org.netdex.hidfuzzer.lua.LuaHIDBinding;
 import org.netdex.hidfuzzer.util.Command;
 
 import eu.chainfire.libsuperuser.Shell;
@@ -14,25 +13,20 @@ import eu.chainfire.libsuperuser.Shell;
  * Created by netdex on 1/16/2017.
  */
 
-public class LuaHIDTask implements Runnable {
+public class LuaUsbTask implements Runnable {
 
     private String name_;
     private String src_;
-    private AsyncIOBridge aio_;
+    private AsyncIoBridge aio_;
 
-    private LuaValue luaChunk_;
-    private Thread activeThread_;
-
-    public LuaHIDTask(String name, String src, AsyncIOBridge dialogIO) {
+    public LuaUsbTask(String name, String src, AsyncIoBridge ioBridge) {
         this.name_ = name;
         this.src_ = src;
-        this.aio_ = dialogIO;
+        this.aio_ = ioBridge;
     }
 
     @Override
     public void run() {
-        activeThread_ = Thread.currentThread();
-
         aio_.onLogClear();
 
         Shell.Threaded su = null;
@@ -53,8 +47,8 @@ public class LuaHIDTask implements Runnable {
 
                 try {
                     Globals globals = JsePlatform.standardGlobals();
-                    LuaHIDBinding luaHIDBinding = new LuaHIDBinding(globals, su, usbGadget, aio_);
-                    luaChunk_ = globals.load(src_);
+                    LuaUsbLibrary luaUsbLibrary = new LuaUsbLibrary(globals, su, usbGadget, aio_);
+                    LuaValue luaChunk_ = globals.load(src_);
                     luaChunk_.call();
                 } catch (LuaError e) {
                     if (!(e.getCause() instanceof InterruptedException)) {
@@ -81,11 +75,10 @@ public class LuaHIDTask implements Runnable {
             if (su != null) {
                 su.close();
             }
-            aio_.onSignal(AsyncIOBridge.Signal.DONE);
         }
     }
 
-    public void interrupt() {
-        activeThread_.interrupt();
+    public String getName() {
+        return name_;
     }
 }

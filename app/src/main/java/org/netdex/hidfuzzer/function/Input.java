@@ -1,4 +1,4 @@
-package org.netdex.hidfuzzer.hid;
+package org.netdex.hidfuzzer.function;
 
 /**
  * Created by netdex on 1/15/2017.

@@ -10,14 +10,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-public class LuaHIDTaskFactory {
-    private AsyncIOBridge dialogIO_;
+public class LuaUsbTaskFactory {
+    private AsyncIoBridge dialogIO_;
 
-    public LuaHIDTaskFactory(AsyncIOBridge dialogIO) {
+    public LuaUsbTaskFactory(AsyncIoBridge dialogIO) {
         this.dialogIO_ = dialogIO;
     }
 
-    public LuaHIDTask createTaskFromLuaFile(Context context, String name, String path) {
+    public LuaUsbTask createTaskFromLuaFile(Context context, String name, String path) {
         try {
             BufferedReader br = new BufferedReader(new InputStreamReader(context.getAssets().open(path)));
             StringBuilder sb = new StringBuilder();
@@ -26,7 +26,7 @@ public class LuaHIDTaskFactory {
                 sb.append(line).append('\n');
             br.close();
             String src = sb.toString();
-            return new LuaHIDTask(name, src, dialogIO_);
+            return new LuaUsbTask(name, src, dialogIO_);
         } catch (IOException e) {
             e.printStackTrace();
             return null;

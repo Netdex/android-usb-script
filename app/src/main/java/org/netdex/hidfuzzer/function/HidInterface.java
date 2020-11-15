@@ -1,11 +1,9 @@
-package org.netdex.hidfuzzer.hid;
-
-import android.util.Log;
+package org.netdex.hidfuzzer.function;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.util.Arrays;
 
-import org.netdex.hidfuzzer.MainActivity;
+import org.netdex.hidfuzzer.util.Command;
 
 import eu.chainfire.libsuperuser.Shell;
 
@@ -15,16 +13,14 @@ import eu.chainfire.libsuperuser.Shell;
  * Created by netdex on 1/16/2017.
  */
 
-public class HIDInterface {
+public class HidInterface {
     private final Shell.Threaded su_;
     private final String devicePath_;
 
-//    private final KeyboardLightListener mKeyboardLightListener;
 
-    public HIDInterface(Shell.Threaded su, String devicePath) {
+    public HidInterface(Shell.Threaded su, String devicePath) {
         this.su_ = su;
         this.devicePath_ = devicePath;
-//        this.mKeyboardLightListener = new KeyboardLightListener();
     }
 
     /**
@@ -45,7 +41,7 @@ public class HIDInterface {
      * @param offset command byte[] to send, defined in HID.java
      */
     public void sendMouse(byte... offset) {
-        HID.sendHIDMouse(su_, devicePath_, offset);
+        sendHIDMouse(su_, devicePath_, offset);
     }
 
     /**
@@ -54,7 +50,7 @@ public class HIDInterface {
      * @param keys command byte[] to send, defined in HID.java
      */
     public void sendKeyboard(byte... keys) throws Shell.ShellDiedException, IOException {
-        HID.sendHIDKeyboard(su_, devicePath_, keys);
+        sendHIDKeyboard(su_, devicePath_, keys);
     }
 
     /**
@@ -126,7 +122,6 @@ public class HIDInterface {
      * @param d Delay after key press
      */
     public void sendKeyboard(String s, int d) throws Shell.ShellDiedException, IOException, InterruptedException {
-        int ec = 0;
         char lc = Character.MIN_VALUE;
         for (char c : s.toCharArray()) {
             byte cd = AP_MAP_CODE[(int) c];
@@ -143,96 +138,63 @@ public class HIDInterface {
         sendKeyboard();
     }
 
-//    public KeyboardLightListener getKeyboardLightListener() {
-//        return mKeyboardLightListener;
-//    }
+    /**
+     * A        B        C        D
+     * XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX
+     * <p>
+     * A: Mouse button mask
+     * B: Mouse X-offset
+     * C: Mouse Y-offset
+     * D: Mouse wheel offset
+     *
+     * @param sh     SUExtensions shell
+     * @param dev    Mouse device (/dev/hidg1)
+     * @param offset HID mouse bytes
+     */
+    public static void sendHIDMouse(Shell.Threaded sh, String dev, byte... offset) {
+        byte[] buffer = new byte[4];
+        throw new UnsupportedOperationException("mouse descriptor not implemented"); // TODO
+        /*
+        if (offset.length > 4)
+            throw new IllegalArgumentException("Your mouse can only move in two dimensions");
+        Arrays.fill(mouse_buf, (byte) 0);
+        System.arraycopy(offset, 0, mouse_buf, 0, offset.length);
+        return write_bytes(sh, dev, mouse_buf);*/
+    }
 
     /**
-     * Listens for changes in keyboard lights (num lock, caps lock, scroll lock)
+     * A        B        C        D        E        F        G        H
+     * XXXXXXXX 00000000 XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX
+     * <p>
+     * A: K modifier mask
+     * B: Reserved
+     * C: K 1; D: K 2; E: K 3; F: K 4; G: K 5; H: K 6;
+     *
+     * @param sh   SUExtensions shell
+     * @param dev  KB device (/dev/hidg0)
+     * @param keys HID keyboard bytes
      */
-//    public class KeyboardLightListener {
-//        private Process mKeyboardLightProc;
-//        private InputStream mKeyboardLightStream;
-//        private int mLastLightState;
-//
-//        /**
-//         * Begins keyboard light listening process
-//         *
-//         * @return error code
-//         */
-//        public int start() {
-//            if (mKeyboardLightProc != null)
-//                throw new IllegalArgumentException("KB light proc already running");
-//            try {
-//                mKeyboardLightProc = Runtime.getRuntime().exec("cat " + devicePath_);
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//            if (mKeyboardLightProc != null) {
-//                mKeyboardLightStream = mKeyboardLightProc.getInputStream();
-//                return 0;
-//            } else {
-//                return 1;
-//            }
-//        }
-//
-//        /**
-//         * Bitmask of light states:
-//         * NUM      0x01
-//         * CAPS     0x02
-//         * SCROLL   0x04
-//         *
-//         * @return bitmask of light states
-//         */
-//        public int read() {
-//            try {
-//                if (mKeyboardLightStream != null)
-//                    return mLastLightState = mKeyboardLightStream.read();
-//                return -1;
-//            } catch (IOException e) {
-//                Log.d(MainActivity.TAG, "Light stream forcibly terminated");
-//                return -1;
-//            }
-//        }
-//
-//        /**
-//         * Checks for availability of new data from keyboard light stream
-//         *
-//         * @return bytes available to read, or -1 if null
-//         */
-//        public int available() {
-//            if (mKeyboardLightStream != null) {
-//                try {
-//                    return mKeyboardLightStream.available();
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//            return -1;
-//        }
-//
-//        /**
-//         * Kill the listener process and tidy up
-//         */
-//        public void kill() {
-//            if (mKeyboardLightStream != null) {
-//                try {
-//                    mKeyboardLightStream.close();
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//                mKeyboardLightStream = null;
-//            }
-//
-//            // close the stream before killing the process
-//            if (mKeyboardLightProc != null) {
-//                mKeyboardLightProc.destroy();
-//                mKeyboardLightProc = null;
-//            }
-//        }
-//
-//        public int getLastLightState() {
-//            return mLastLightState;
-//        }
-//    }
+    public static void sendHIDKeyboard(Shell.Threaded sh, String dev, byte... keys) throws Shell.ShellDiedException, IOException {
+        byte[] buffer = new byte[8];
+        if (keys.length > 7)
+            throw new IllegalArgumentException("Cannot send more than 6 keys");
+        Arrays.fill(buffer, (byte) 0);
+        if (keys.length > 0) buffer[0] = keys[0];
+        if (keys.length > 1) System.arraycopy(keys, 1, buffer, 2, keys.length - 1);
+        write_bytes(sh, dev, buffer);
+    }
+
+    /**
+     * Writes bytes to a file with "echo -n -e [binary string] > file"
+     *
+     * @param sh  Threaded shell to send echo command
+     * @param dev File to write to
+     * @param arr Bytes to write
+     */
+    private static void write_bytes(Shell.Threaded sh, String dev, byte[] arr) throws Shell.ShellDiedException, IOException {
+        int exitCode = sh.run(Command.echoToFile(Command.escapeBytes(arr), dev, true, false));
+        if (exitCode != 0)
+            throw new IOException(String.format("Could not write to device \"%s\"", dev));
+    }
+
 }
