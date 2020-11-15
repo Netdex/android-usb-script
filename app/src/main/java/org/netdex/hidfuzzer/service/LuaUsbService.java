@@ -15,6 +15,7 @@ import org.netdex.hidfuzzer.task.LuaUsbTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class LuaUsbService extends Service {
 
@@ -38,7 +39,6 @@ public class LuaUsbService extends Service {
     public static final int ONGOING_NOTIFICATION_ID = 1;
 
     private final ExecutorService executorService_ = Executors.newSingleThreadExecutor();
-    private Future<?> activeTask_;
 
     public LuaUsbService() {
 
@@ -53,7 +53,7 @@ public class LuaUsbService extends Service {
                         .build();
         startForeground(ONGOING_NOTIFICATION_ID, notification);
 
-        activeTask_ = executorService_.submit(() -> {
+        executorService_.execute(() -> {
             task.run();
             stopForeground(true);
             callback.onTaskCompleted();
@@ -67,11 +67,13 @@ public class LuaUsbService extends Service {
 
     @Override
     public boolean onUnbind(Intent intent) {
-        if (activeTask_ != null) {
-            activeTask_.cancel(true);
-            return true;
+        executorService_.shutdownNow();
+        try {
+            executorService_.awaitTermination(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
-        return false;
+        return true;
     }
 
     @Override

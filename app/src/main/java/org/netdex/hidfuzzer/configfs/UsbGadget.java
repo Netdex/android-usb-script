@@ -19,12 +19,12 @@ public class UsbGadget {
         public String configName;
 
         public static final Parameters DEFAULT = new Parameters(
-                "Samsung",
-                "samsung123",
-                "0xa4a5",
-                "0x0525",
-                "Mass Storage Gadget",
-                "Configuration 1"
+                null,
+                null,
+                "0x1d6b",
+                "0x104",
+                null,
+                null
         );
 
         public Parameters(String manufacturer, String serial,
@@ -41,11 +41,11 @@ public class UsbGadget {
 
     public static final String CONFIG_DIR = "c.1";
 
-    private Parameters params_;
-    private String name_;
-    private String configFsPath_;
+    private final Parameters params_;
+    private final String name_;
+    private final String configFsPath_;
 
-    private ArrayList<UsbGadgetFunction> functions_;
+    private final ArrayList<UsbGadgetFunction> functions_;
 
     private String oldGadgetUsingUDC_ = null;
     private String oldGadgetUDCDriver_ = null;

@@ -7,8 +7,6 @@ package org.netdex.hidfuzzer.task;
 public interface AsyncIoBridge {
     void onLogMessage(String s);
 
-    void onLogClear();
-
     boolean onConfirm(String title, String prompt);
 
     String onPrompt(String title, String def);

@@ -3,77 +3,58 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingBottom="@dimen/activity_vertical_margin"
     android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingBottom="@dimen/activity_vertical_margin"
     tools:context="org.netdex.hidfuzzer.MainActivity">
 
-    <ToggleButton
-        android:id="@+id/btnPoll"
+    <Button
+        android:id="@+id/btn_cancel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentRight="true"
         android:layout_alignParentStart="true"
+        android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
-        android:checked="false"
-        android:textOff="@string/disabled"
-        android:textOn="@string/enabled"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="true"
+        android:enabled="false"
+        android:text="@string/cancel"
         android:textSize="14sp" />
 
     <TextView
-        android:text="@string/task"
+        android:id="@+id/lblLogContent"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/lblTask"
-        android:layout_marginTop="12dp"
-        android:layout_below="@+id/btnPoll"
+        android:layout_below="@+id/btn_cancel"
+        android:layout_alignParentStart="true"
         android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true" />
-
-    <Spinner
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/spnTask"
-        android:layout_below="@+id/lblTask"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true" />
+        android:layout_marginTop="20dp"
+        android:text="@string/log_content"
+        android:textStyle="normal|bold" />
 
     <ScrollView
+        android:id="@+id/scrollview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
         android:layout_below="@+id/lblLogContent"
-        android:id="@+id/scrollview"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentLeft="true"
         android:layout_marginTop="10dp"
         android:fillViewport="false">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" >
+            android:orientation="vertical">
 
             <TextView
+                android:id="@+id/text_log"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/txtLog"
                 android:fontFamily="monospace"
                 android:textSize="10sp" />
         </LinearLayout>
     </ScrollView>
-
-    <TextView
-        android:text="@string/log_content"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/spnTask"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:id="@+id/lblLogContent"
-        android:layout_marginTop="20dp"
-        android:textStyle="normal|bold" />
 
 </RelativeLayout>

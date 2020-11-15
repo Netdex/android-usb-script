@@ -16,7 +16,7 @@ while true do
 
     -- poll until /dev/hidg0 is writable
     while not kb.test() do
-        delay(1000)
+        usb.delay(1000)
     end
 
     usb.log("running")

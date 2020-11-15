@@ -27,8 +27,6 @@ public class LuaUsbTask implements Runnable {
 
     @Override
     public void run() {
-        aio_.onLogClear();
-
         Shell.Threaded su = null;
 
         try {

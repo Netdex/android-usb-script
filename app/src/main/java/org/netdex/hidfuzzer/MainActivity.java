@@ -1,17 +1,22 @@
 package org.netdex.hidfuzzer;
 
+import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Html;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
-import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ScrollView;
-import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.ToggleButton;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.os.HandlerCompat;
 
@@ -23,70 +28,34 @@ import org.netdex.hidfuzzer.task.AsyncIoBridge;
 import org.netdex.hidfuzzer.task.LuaUsbTask;
 import org.netdex.hidfuzzer.task.LuaUsbTaskFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicReference;
-
 
 public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = "hidfuzzer";
-    public static final String SCRIPT_PATH = "scripts";
 
-    // I only made this map because I'm too lazy to make a custom list adapter
-    static final HashMap<String, String> fTaskMap = new HashMap<>();
-    static final ArrayList<String> fTaskSpinnerItems = new ArrayList<>();
+    private LuaUsbServiceConnection activeServiceConn_;
+    private LuaUsbTaskFactory luaUsbTaskFactory_;
+    private Handler handler_;
 
-    private LuaUsbTask mRunningTask;
+    private Button btnCancel_;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // load scripts
-        String[] scriptFilePaths;
-        try {
-            scriptFilePaths = getAssets().list(SCRIPT_PATH);
+        handler_ = HandlerCompat.createAsync(Looper.getMainLooper());
 
-            for (String filePath : scriptFilePaths) {
-                if (filePath.endsWith(".lua")) {
-                    fTaskMap.put(filePath, SCRIPT_PATH + File.separator + filePath);
-                    fTaskSpinnerItems.add(filePath);
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        Handler handler = HandlerCompat.createAsync(Looper.getMainLooper());
-
-        // sort out the UI
-        ToggleButton btnPoll = findViewById(R.id.btnPoll);
-        Spinner spnTask = findViewById(R.id.spnTask);
-        TextView logView = findViewById(R.id.txtLog);
+        btnCancel_ = findViewById(R.id.btn_cancel);
+        TextView logView = findViewById(R.id.text_log);
         ScrollView scrollView = findViewById(R.id.scrollview);
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this, android.R.layout.simple_spinner_item, fTaskSpinnerItems);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spnTask.setAdapter(adapter);
 
         AsyncIoBridge dialogIO = new AsyncIoBridge() {
             @Override
             public void onLogMessage(String s) {
-                handler.post(() -> {
+                handler_.post(() -> {
                     logView.append(Html.fromHtml(s, Html.FROM_HTML_MODE_COMPACT));
                     logView.append("\n");
                     scrollView.fullScroll(View.FOCUS_DOWN);
-                });
-            }
-
-            @Override
-            public void onLogClear() {
-                handler.post(() -> {
-                    logView.setText("");
                 });
             }
 
@@ -103,30 +72,83 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        AtomicReference<LuaUsbServiceConnection> activeServiceConn = new AtomicReference<>();
-        LuaUsbTaskFactory luaUsbTaskFactory = new LuaUsbTaskFactory(dialogIO);
+        luaUsbTaskFactory_ = new LuaUsbTaskFactory(dialogIO);
 
-        btnPoll.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                String selectedTask = (String) spnTask.getSelectedItem();
-                String taskSrcFilePath = fTaskMap.get(selectedTask);
+        btnCancel_.setOnClickListener(v -> terminateLuaUsbService());
+    }
 
-                Intent serviceIntent = new Intent(this, LuaUsbService.class);
-                activeServiceConn.set(
-                        new LuaUsbServiceConnection(
-                                luaUsbTaskFactory.createTaskFromLuaFile(
-                                        MainActivity.this, selectedTask, taskSrcFilePath),
-                                () -> handler.post(() -> {
-                                    btnPoll.setChecked(false);
-                                    btnPoll.setEnabled(true);
-                                })));
-                bindService(serviceIntent, activeServiceConn.get(), BIND_AUTO_CREATE);
-            } else {
-                if (activeServiceConn != null) {
-                    btnPoll.setEnabled(false);
-                    unbindService(activeServiceConn.get());
-                }
-            }
-        });
+    public void createLuaUsbService(LuaUsbTask task) {
+        if (activeServiceConn_ != null) {
+            terminateLuaUsbService();
+        }
+        Intent serviceIntent = new Intent(this, LuaUsbService.class);
+        activeServiceConn_ =
+                new LuaUsbServiceConnection(task, () -> handler_.post(() -> btnCancel_.setEnabled(false)));
+        bindService(serviceIntent, activeServiceConn_, BIND_AUTO_CREATE);
+        btnCancel_.setEnabled(true);
+    }
+
+    public void terminateLuaUsbService() {
+        if (activeServiceConn_ != null) {
+            btnCancel_.setEnabled(false);
+            unbindService(activeServiceConn_);
+            activeServiceConn_ = null;
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_asset:
+                openLuaAsset();
+                return true;
+            case R.id.action_script:
+                openLuaScript();
+                return true;
+        }
+        return false;
+    }
+
+    private static final int PICK_LUA_ASSET = 2;
+    private static final int PICK_LUA_SCRIPT = 3;
+
+    private void openLuaAsset() {
+        Intent intent = new Intent(this, SelectAssetActivity.class);
+        startActivityForResult(intent, PICK_LUA_ASSET);
+    }
+
+    private void openLuaScript() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        startActivityForResult(intent, PICK_LUA_SCRIPT);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != Activity.RESULT_OK || data == null)
+            return;
+
+        switch (requestCode) {
+            case PICK_LUA_ASSET:
+                String name = data.getStringExtra("name");
+                String path = data.getStringExtra("path");
+                createLuaUsbService(luaUsbTaskFactory_.createTaskFromLuaAsset(
+                        MainActivity.this, name, path));
+                break;
+            case PICK_LUA_SCRIPT:
+                Uri uri = data.getData();
+                createLuaUsbService(luaUsbTaskFactory_.createTaskFromLuaScript(
+                        MainActivity.this, uri.getLastPathSegment(), uri));
+                break;
+        }
     }
 }

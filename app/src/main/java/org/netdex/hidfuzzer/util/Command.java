@@ -10,6 +10,8 @@ import eu.chainfire.libsuperuser.Shell;
 
 public class Command {
     public static String echoToFile(String s, String file, boolean escape, boolean newLine) {
+        if (s == null)
+            return "";
         return String.format("echo %s %s \"%s\" > \"%s\"", newLine ? "" : "-n", escape ? "-e" : "", s, file);
     }
 
