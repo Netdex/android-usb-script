@@ -6,7 +6,10 @@ import java.nio.file.Paths;
 
 import eu.chainfire.libsuperuser.Shell;
 
-
+/**
+ * https://www.kernel.org/doc/Documentation/usb/gadget_configfs.txt
+ * https://www.kernel.org/doc/Documentation/ABI/testing/
+ */
 public abstract class UsbGadgetFunction {
     public static class Parameters {
 

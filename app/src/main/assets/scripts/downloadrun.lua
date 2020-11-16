@@ -1,7 +1,4 @@
 ---
---- Created by netdex.
---- DateTime: 12/30/17 10:12 PM
----
 --- downloadrun.lua: downloads and executes a file
 --- directly translated from the Java version in previous builds
 ---
@@ -15,8 +12,8 @@ local runAs = usb.should("Task UAC", "Launch exe as admin?");
 while true do
     usb.log("idle")
 
-    -- poll until /dev/hidg0 is writable
-    while not kb.test() do
+    -- poll until usb plugged in
+    while usb.state() == "not attached" do
         usb.delay(1000)
     end
 
@@ -54,7 +51,8 @@ while true do
     )
 
     usb.log("done")
-    while kb.test() do
+    -- poll until usb unplugged
+    while usb.state() == "configured" do
         usb.delay(1000)
     end
     usb.log("disconnected")

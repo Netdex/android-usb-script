@@ -69,11 +69,12 @@ public class LuaUsbService extends Service {
     public boolean onUnbind(Intent intent) {
         executorService_.shutdownNow();
         try {
-            executorService_.awaitTermination(10, TimeUnit.SECONDS);
+            executorService_.awaitTermination(5, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
+            // TODO handle more gracefully
             e.printStackTrace();
         }
-        return true;
+        return false;
     }
 
     @Override

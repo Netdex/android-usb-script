@@ -24,7 +24,7 @@ import org.netdex.hidfuzzer.gui.ConfirmDialog;
 import org.netdex.hidfuzzer.gui.PromptDialog;
 import org.netdex.hidfuzzer.service.LuaUsbService;
 import org.netdex.hidfuzzer.service.LuaUsbServiceConnection;
-import org.netdex.hidfuzzer.task.AsyncIoBridge;
+import org.netdex.hidfuzzer.task.AsyncIOBridge;
 import org.netdex.hidfuzzer.task.LuaUsbTask;
 import org.netdex.hidfuzzer.task.LuaUsbTaskFactory;
 
@@ -49,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
         TextView logView = findViewById(R.id.text_log);
         ScrollView scrollView = findViewById(R.id.scrollview);
 
-        AsyncIoBridge dialogIO = new AsyncIoBridge() {
+        AsyncIOBridge dialogIO = new AsyncIOBridge() {
             @Override
             public void onLogMessage(String s) {
                 handler_.post(() -> {
@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
     public void terminateLuaUsbService() {
         if (activeServiceConn_ != null) {
             btnCancel_.setEnabled(false);
-            unbindService(activeServiceConn_);
+            unbindService(activeServiceConn_); // TODO this can cause ANR
             activeServiceConn_ = null;
         }
     }

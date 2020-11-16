@@ -14,25 +14,13 @@ import eu.chainfire.libsuperuser.Shell;
  */
 
 public class HidInterface {
+
     private final Shell.Threaded su_;
     private final String devicePath_;
-
 
     public HidInterface(Shell.Threaded su, String devicePath) {
         this.su_ = su;
         this.devicePath_ = devicePath;
-    }
-
-    /**
-     * Tests if current HID device is connected by sending a dummy key
-     */
-    public boolean test() throws Shell.ShellDiedException {
-        try {
-            sendKeyboard((byte) 0, Input.KB.K.VOLUME_UP.c);
-        } catch (IOException e) {
-            return false;
-        }
-        return true;
     }
 
     /**
@@ -41,7 +29,7 @@ public class HidInterface {
      * @param offset command byte[] to send, defined in HID.java
      */
     public void sendMouse(byte... offset) {
-        sendHIDMouse(su_, devicePath_, offset);
+        sendMouseHID(su_, devicePath_, offset);
     }
 
     /**
@@ -50,7 +38,7 @@ public class HidInterface {
      * @param keys command byte[] to send, defined in HID.java
      */
     public void sendKeyboard(byte... keys) throws Shell.ShellDiedException, IOException {
-        sendHIDKeyboard(su_, devicePath_, keys);
+        sendKeyboardHID(su_, devicePath_, keys);
     }
 
     /**
@@ -130,7 +118,7 @@ public class HidInterface {
                 throw new IllegalArgumentException("Given string contains illegal characters");
             if (Character.toLowerCase(c) == Character.toLowerCase(lc)) sendKeyboard();
             sendKeyboard(st ? Input.KB.M.LSHIFT.c : 0, cd);
-            if (d != 0){
+            if (d != 0) {
                 Thread.sleep(d);
             }
             lc = c;
@@ -151,7 +139,7 @@ public class HidInterface {
      * @param dev    Mouse device (/dev/hidg1)
      * @param offset HID mouse bytes
      */
-    public static void sendHIDMouse(Shell.Threaded sh, String dev, byte... offset) {
+    public static void sendMouseHID(Shell.Threaded sh, String dev, byte... offset) {
         byte[] buffer = new byte[4];
         throw new UnsupportedOperationException("mouse descriptor not implemented"); // TODO
         /*
@@ -174,27 +162,14 @@ public class HidInterface {
      * @param dev  KB device (/dev/hidg0)
      * @param keys HID keyboard bytes
      */
-    public static void sendHIDKeyboard(Shell.Threaded sh, String dev, byte... keys) throws Shell.ShellDiedException, IOException {
+    public static void sendKeyboardHID(Shell.Threaded sh, String dev, byte... keys) throws Shell.ShellDiedException, IOException {
         byte[] buffer = new byte[8];
         if (keys.length > 7)
             throw new IllegalArgumentException("Cannot send more than 6 keys");
         Arrays.fill(buffer, (byte) 0);
         if (keys.length > 0) buffer[0] = keys[0];
         if (keys.length > 1) System.arraycopy(keys, 1, buffer, 2, keys.length - 1);
-        write_bytes(sh, dev, buffer);
-    }
-
-    /**
-     * Writes bytes to a file with "echo -n -e [binary string] > file"
-     *
-     * @param sh  Threaded shell to send echo command
-     * @param dev File to write to
-     * @param arr Bytes to write
-     */
-    private static void write_bytes(Shell.Threaded sh, String dev, byte[] arr) throws Shell.ShellDiedException, IOException {
-        int exitCode = sh.run(Command.echoToFile(Command.escapeBytes(arr), dev, true, false));
-        if (exitCode != 0)
-            throw new IOException(String.format("Could not write to device \"%s\"", dev));
+        Command.write(sh, dev, buffer);
     }
 
 }

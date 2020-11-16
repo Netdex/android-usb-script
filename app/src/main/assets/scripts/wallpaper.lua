@@ -1,9 +1,5 @@
 ---
---- Created by netdex.
---- DateTime: 1/6/2018 4:33 PM
----
 --- wallpaper.lua: Changes a Windows 10 desktop wallpaper
----
 ---
 
 usb = luausb.create({ id = 0, type = "keyboard" })
@@ -14,8 +10,8 @@ local file = usb.ask("Wallpaper to download?", "https://i.redd.it/ur1mqcbpxou51.
 while true do
     usb.log("idle")
 
-    -- poll until /dev/hidg0 is writable
-    while not kb.test() do
+    -- poll until usb plugged in
+    while usb.state() == "not attached" do
         usb.delay(1000)
     end
 
@@ -40,7 +36,8 @@ while true do
             "exit\n")
 
     usb.log("done")
-    while kb.test() do
+    -- poll until usb unplugged
+    while usb.state() == "configured" do
         usb.delay(1000)
     end
 end

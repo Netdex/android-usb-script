@@ -4,7 +4,10 @@ import org.netdex.hidfuzzer.util.Command;
 
 import eu.chainfire.libsuperuser.Shell;
 
-
+/**
+ * https://www.kernel.org/doc/Documentation/usb/gadget_hid.txt
+ * https://www.kernel.org/doc/Documentation/ABI/testing/configfs-usb-gadget-hid
+ */
 public class UsbGadgetFunctionHid extends UsbGadgetFunction {
     public static class Parameters extends UsbGadgetFunction.Parameters {
         public int protocol;
@@ -85,20 +88,5 @@ public class UsbGadgetFunctionHid extends UsbGadgetFunction {
                 Command.echoToFile(Command.escapeBytes(params.descriptor),
                         String.format("functions/%s/report_desc", functionDir), true, false),
         });
-    }
-
-    @Override
-    public void bind(Shell.Threaded su, String gadgetPath, String configDir) throws Shell.ShellDiedException {
-        super.bind(su, gadgetPath, configDir);
-    }
-
-    @Override
-    public void unbind(Shell.Threaded su, String gadgetPath, String configDir) throws Shell.ShellDiedException {
-        super.unbind(su, gadgetPath, configDir);
-    }
-
-    @Override
-    public void remove(Shell.Threaded su, String gadgetPath) throws Shell.ShellDiedException {
-        super.remove(su, gadgetPath);
     }
 }

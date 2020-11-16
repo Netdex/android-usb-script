@@ -18,15 +18,6 @@ public class UsbGadget {
 
         public String configName;
 
-        public static final Parameters DEFAULT = new Parameters(
-                null,
-                null,
-                "0x1d6b",
-                "0x104",
-                null,
-                null
-        );
-
         public Parameters(String manufacturer, String serial,
                           String idProduct, String idVendor, String product,
                           String configName) {
@@ -173,6 +164,10 @@ public class UsbGadget {
 
     public String getUDC(Shell.Threaded su) {
         return Command.readFile(su, getUDCPath());
+    }
+
+    public String getUDCState(Shell.Threaded su, String udc) {
+        return Command.readFile(su, String.format("/sys/class/udc/%s/state", udc));
     }
 
     public boolean isBound(Shell.Threaded su) {

@@ -7,6 +7,8 @@ import org.luaj.vm2.lib.jse.JsePlatform;
 import org.netdex.hidfuzzer.configfs.UsbGadget;
 import org.netdex.hidfuzzer.util.Command;
 
+import java.util.UUID;
+
 import eu.chainfire.libsuperuser.Shell;
 
 /**
@@ -15,11 +17,11 @@ import eu.chainfire.libsuperuser.Shell;
 
 public class LuaUsbTask implements Runnable {
 
-    private String name_;
-    private String src_;
-    private AsyncIoBridge aio_;
+    private final String name_;
+    private final String src_;
+    private final AsyncIOBridge aio_;
 
-    public LuaUsbTask(String name, String src, AsyncIoBridge ioBridge) {
+    public LuaUsbTask(String name, String src, AsyncIOBridge ioBridge) {
         this.name_ = name;
         this.src_ = src;
         this.aio_ = ioBridge;
@@ -34,7 +36,18 @@ public class LuaUsbTask implements Runnable {
 
             UsbGadget usbGadget;
             if (Command.pathExists(su, "/config")) {
-                usbGadget = new UsbGadget(UsbGadget.Parameters.DEFAULT, "hidfuzzer", "/config");
+                // MITIGATION: Windows seems to memoize usb configurations by serial number
+                // (not across reboots). This causes undefined behavior when the configuration
+                // changes. Randomize the serial number as a workaround.
+                String serial = String.format("%x", UUID.randomUUID().getLeastSignificantBits());
+                UsbGadget.Parameters gadgetParameters = new UsbGadget.Parameters(
+                        "netdex",
+                        serial,
+                        "0x1d6b",
+                        "0x104",
+                        "HIDFuzzer",
+                        "Composite");
+                usbGadget = new UsbGadget(gadgetParameters, "hidf", "/config");
             } else {
                 aio_.onLogMessage("No method exists for accessing hid gadget");
                 return;

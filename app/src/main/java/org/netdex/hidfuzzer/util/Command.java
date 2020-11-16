@@ -2,6 +2,7 @@ package org.netdex.hidfuzzer.util;
 
 import androidx.annotation.NonNull;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -9,14 +10,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import eu.chainfire.libsuperuser.Shell;
 
 public class Command {
-    public static String echoToFile(String s, String file, boolean escape, boolean newLine) {
-        if (s == null)
+
+    public static <T> String echoToFile(T val, String file, boolean escape, boolean newLine) {
+        if (val == null)
             return "";
-        return String.format("echo %s %s \"%s\" > \"%s\"", newLine ? "" : "-n", escape ? "-e" : "", s, file);
+        return String.format("echo %s %s \"%s\" > \"%s\"", newLine ? "" : "-n", escape ? "-e" : "",
+                val, file);
     }
 
-    public static String echoToFile(String s, String file) {
-        return echoToFile(s, file, false, true);
+    public static <T> String echoToFile(T val, String file) {
+        return echoToFile(val, file, false, true);
+    }
+
+    public static String timeout(String command, double timeout) {
+        return String.format("timeout %f %s", timeout, command);
     }
 
     private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
@@ -62,7 +69,7 @@ public class Command {
     }
 
     public static boolean pathExists(Shell.Interactive su, String path) throws Shell.ShellDiedException {
-        int exitCode = su.run(String.format("ls \"%s\"", path));
+        int exitCode = su.run(String.format("stat \"%s\"", path));
         return exitCode == 0;
     }
 
@@ -83,5 +90,20 @@ public class Command {
             }
         });
         return files;
+    }
+
+    /**
+     * Writes bytes to a file with "echo -n -e [binary string] > file"
+     *
+     * @param sh   Threaded shell to send echo command
+     * @param file File to write to
+     * @param arr  Bytes to write
+     */
+    public static void write(Shell.Threaded sh, String file, byte[] arr) throws Shell.ShellDiedException, IOException {
+        // NOTE: It is possible for this write to block in some circumstances when unplugged
+        int exitCode = sh.run(Command.echoToFile(
+                Command.escapeBytes(arr), file, true, false));
+        if (exitCode != 0)
+            throw new IOException(String.format("Could not write to \"%s\"", file));
     }
 }

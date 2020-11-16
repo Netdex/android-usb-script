@@ -12,6 +12,7 @@ import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
 import org.netdex.hidfuzzer.configfs.UsbGadget;
 import org.netdex.hidfuzzer.configfs.function.UsbGadgetFunctionHid;
+import org.netdex.hidfuzzer.configfs.function.UsbGadgetFunctionMassStorage;
 import org.netdex.hidfuzzer.function.HidInterface;
 import org.netdex.hidfuzzer.function.Input;
 
@@ -25,24 +26,22 @@ import eu.chainfire.libsuperuser.Shell;
 
 public class LuaUsbLibrary {
 
-    private final Globals globals_;
     private final Shell.Threaded su_;
     private final UsbGadget usbGadget_;
-    private final AsyncIoBridge aio_;
+    private final AsyncIOBridge aio_;
 
-//    private LuaThread mKBLiteRoutine;
-//    private boolean kbliteStarted = false;
-
-    public LuaUsbLibrary(Globals globals_, Shell.Threaded su, UsbGadget usbGadget, AsyncIoBridge aio) {
+    public LuaUsbLibrary(Globals globals, Shell.Threaded su, UsbGadget usbGadget, AsyncIOBridge aio) {
         this.aio_ = aio;
         this.su_ = su;
         this.usbGadget_ = usbGadget;
-        this.globals_ = globals_;
 
         LuaFunction library = new luausb();
-        globals_.set(library.name(), library.call());
+        globals.set(library.name(), library.call());
     }
 
+    /**
+     * luausb library generator function
+     */
     class luausb extends ZeroArgFunction {
         @Override
         public LuaValue call() {
@@ -53,11 +52,31 @@ public class LuaUsbLibrary {
 
         class create extends VarArgFunction {
 
+            /**
+             * Creates a USB composite device composed of multiple gadgets.
+             * This function may only be called once within a script.
+             *
+             * @param args The configuration for each gadget part of the USB composite device.
+             *             A configuration is a table which must have at least the following
+             *             properties:
+             *             <p>
+             *             type: string = (keyboard|storage)
+             *             id: integer = [n >= 0]
+             *             <p>
+             *             Depending on type, the configuration can have additional properties:
+             *             TODO
+             * @return A library binding for interacting with the created gadgets.
+             * The binding is a table with at least the following properties:
+             * <p>
+             * dev: table - An array with an device binding for each provided configuration.
+             * <p>
+             * It also contains various library functions.
+             */
             @Override
             public Varargs invoke(Varargs args) {
                 LuaTable library = tableOf();
                 for (LuaFunction f : new LuaFunction[]{
-                        new delay(), new log(), new should(), new ask()}) {
+                        new delay(), new log(), new should(), new ask(), new state()}) {
                     library.set(f.name(), f);
                 }
 //                LuaTable mouseButtons = tableOf();
@@ -78,6 +97,18 @@ public class LuaUsbLibrary {
                                 id, UsbGadgetFunctionHid.Parameters.DEFAULT);
                         usbGadget_.addFunction(fcnHid);
                         device = new keyboard(id).call();
+                    } else if (type.equals("storage")) {
+                        String file = config.get("file").optjstring("/data/local/tmp/mass_storage-lun0.img");
+                        boolean ro = config.get("ro").optboolean(false);
+                        long size = config.get("size").optlong(256);
+
+                        UsbGadgetFunctionMassStorage.Parameters storParam =
+                                new UsbGadgetFunctionMassStorage.Parameters(
+                                        file, ro, true, false, false, true, size);
+                        UsbGadgetFunctionMassStorage fcnStor = new UsbGadgetFunctionMassStorage(
+                                id, storParam);
+                        usbGadget_.addFunction(fcnStor);
+                        device = new storage(id).call();
                     } else {
                         throw new LuaError(String.format("Invalid function type \"%s\"", type));
                     }
@@ -137,6 +168,13 @@ public class LuaUsbLibrary {
             }
         }
 
+        class state extends ZeroArgFunction {
+            @Override
+            public LuaValue call() {
+                return valueOf(usbGadget_.getUDCState(su_, usbGadget_.getUDC(su_)));
+            }
+        }
+
         class keyboard extends ZeroArgFunction {
             private final HidInterface hid_;
 
@@ -155,22 +193,10 @@ public class LuaUsbLibrary {
                     library.set(ikm.name(), ikm.c);
                 }
                 for (LuaFunction f : new LuaFunction[]{
-                        new test(), new hid_mouse(), new hid_keyboard(),
-                        new press_keys(), new send_string()}) {
+                        new hid_mouse(), new hid_keyboard(), new press_keys(), new send_string()}) {
                     library.set(f.name(), f);
                 }
                 return library;
-            }
-
-            class test extends ZeroArgFunction {
-                @Override
-                public LuaValue call() {
-                    try {
-                        return valueOf(hid_.test());
-                    } catch (Shell.ShellDiedException e) {
-                        throw new LuaError(e);
-                    }
-                }
             }
 
             class hid_mouse extends VarArgFunction {
@@ -230,6 +256,17 @@ public class LuaUsbLibrary {
                     }
                     return NIL;
                 }
+            }
+        }
+
+        class storage extends ZeroArgFunction {
+            public storage(int id) {
+
+            }
+
+            @Override
+            public LuaValue call() {
+                return NIL;
             }
         }
     }
