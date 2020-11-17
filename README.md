@@ -7,6 +7,8 @@ with arbitrary composite USB devices.
 
 **Root access is required.**
 
+## [Demonstration](https://streamable.com/oeyrik)
+
 The best way to explain what this app does is with a code example. The following script
 does the following when interpreted by this app:
 
