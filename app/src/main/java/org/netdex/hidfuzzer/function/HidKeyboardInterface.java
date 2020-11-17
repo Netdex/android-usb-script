@@ -1,35 +1,19 @@
 package org.netdex.hidfuzzer.function;
 
+import org.netdex.hidfuzzer.util.Command;
+
 import java.io.IOException;
 import java.util.Arrays;
 
-import org.netdex.hidfuzzer.util.Command;
-
 import eu.chainfire.libsuperuser.Shell;
 
-/**
- * Wrapper for HID class for ease of usage
- * <p>
- * Created by netdex on 1/16/2017.
- */
-
-public class HidInterface {
-
+public class HidKeyboardInterface {
     private final Shell.Threaded su_;
     private final String devicePath_;
 
-    public HidInterface(Shell.Threaded su, String devicePath) {
+    public HidKeyboardInterface(Shell.Threaded su, String devicePath) {
         this.su_ = su;
         this.devicePath_ = devicePath;
-    }
-
-    /**
-     * Sends mouse command
-     *
-     * @param offset command byte[] to send, defined in HID.java
-     */
-    public void sendMouse(byte... offset) {
-        sendMouseHID(su_, devicePath_, offset);
     }
 
     /**
@@ -109,7 +93,7 @@ public class HidInterface {
      * @param s String to send
      * @param d Delay after key press
      */
-    public void sendKeyboard(String s, int d) throws Shell.ShellDiedException, IOException, InterruptedException {
+    public void sendKeyboard(String s, long d) throws Shell.ShellDiedException, IOException, InterruptedException {
         char lc = Character.MIN_VALUE;
         for (char c : s.toCharArray()) {
             byte cd = AP_MAP_CODE[(int) c];
@@ -117,37 +101,12 @@ public class HidInterface {
             if (cd == -1)
                 throw new IllegalArgumentException("Given string contains illegal characters");
             if (Character.toLowerCase(c) == Character.toLowerCase(lc)) sendKeyboard();
-            sendKeyboard(st ? Input.KB.M.LSHIFT.c : 0, cd);
-            if (d != 0) {
-                Thread.sleep(d);
-            }
+            sendKeyboard(st ? HidInput.Keyboard.Mod.MOD_LSHIFT.code : 0, cd);
+            if (Thread.interrupted()) throw new InterruptedException();
+            if (d > 0) Thread.sleep(d);
             lc = c;
         }
         sendKeyboard();
-    }
-
-    /**
-     * A        B        C        D
-     * XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX
-     * <p>
-     * A: Mouse button mask
-     * B: Mouse X-offset
-     * C: Mouse Y-offset
-     * D: Mouse wheel offset
-     *
-     * @param sh     SUExtensions shell
-     * @param dev    Mouse device (/dev/hidg1)
-     * @param offset HID mouse bytes
-     */
-    public static void sendMouseHID(Shell.Threaded sh, String dev, byte... offset) {
-        byte[] buffer = new byte[4];
-        throw new UnsupportedOperationException("mouse descriptor not implemented"); // TODO
-        /*
-        if (offset.length > 4)
-            throw new IllegalArgumentException("Your mouse can only move in two dimensions");
-        Arrays.fill(mouse_buf, (byte) 0);
-        System.arraycopy(offset, 0, mouse_buf, 0, offset.length);
-        return write_bytes(sh, dev, mouse_buf);*/
     }
 
     /**
@@ -171,5 +130,4 @@ public class HidInterface {
         if (keys.length > 1) System.arraycopy(keys, 1, buffer, 2, keys.length - 1);
         Command.write(sh, dev, buffer);
     }
-
 }

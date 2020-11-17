@@ -36,18 +36,7 @@ public class LuaUsbTask implements Runnable {
 
             UsbGadget usbGadget;
             if (Command.pathExists(su, "/config")) {
-                // MITIGATION: Windows seems to memoize usb configurations by serial number
-                // (not across reboots). This causes undefined behavior when the configuration
-                // changes. Randomize the serial number as a workaround.
-                String serial = String.format("%x", UUID.randomUUID().getLeastSignificantBits());
-                UsbGadget.Parameters gadgetParameters = new UsbGadget.Parameters(
-                        "netdex",
-                        serial,
-                        "0x1d6b",
-                        "0x104",
-                        "HIDFuzzer",
-                        "Composite");
-                usbGadget = new UsbGadget(gadgetParameters, "hidf", "/config");
+                usbGadget = new UsbGadget("hidf", "/config");
             } else {
                 aio_.onLogMessage("No method exists for accessing hid gadget");
                 return;
@@ -73,6 +62,8 @@ public class LuaUsbTask implements Runnable {
 
                 if (usbGadget.isBound(su)) {
                     usbGadget.unbind(su);
+                }
+                if (usbGadget.isCreated(su)) {
                     usbGadget.remove(su);
                 }
             }

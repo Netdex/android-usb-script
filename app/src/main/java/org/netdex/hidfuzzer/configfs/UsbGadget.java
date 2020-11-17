@@ -30,52 +30,46 @@ public class UsbGadget {
         }
     }
 
-    public static final String CONFIG_DIR = "c.1";
+    private static final String CONFIG_DIR = "c.1";
+    // https://android.googlesource.com/platform/system/core/+/master/rootdir/init.usb.configfs.rc
+    private static final String SYSTEM_GADGET = "g1";
 
-    private final Parameters params_;
-    private final String name_;
+    private final String gadget_name_;
     private final String configFsPath_;
 
     private final ArrayList<UsbGadgetFunction> functions_;
 
-    private String oldGadgetUsingUDC_ = null;
-    private String oldGadgetUDCDriver_ = null;
-
-    public UsbGadget(Parameters parameters, String name, String configFsPath) {
-        this.params_ = parameters;
-        this.name_ = name;
+    public UsbGadget(String name, String configFsPath) {
+        this.gadget_name_ = name;
         this.configFsPath_ = configFsPath;
 
         this.functions_ = new ArrayList<>();
     }
 
-    public void addFunction(UsbGadgetFunction function) {
-        functions_.add(function);
-    }
-
-    public void create(Shell.Threaded su) throws Shell.ShellDiedException {
-        String gadgetPath = getGadgetPath();
-        if (Command.pathExists(su, gadgetPath)) {
+    public void create(Shell.Threaded su, Parameters params) throws Shell.ShellDiedException {
+        String gadgetPath = getGadgetPath(gadget_name_);
+        if (!Command.getSystemProp(su, "sys.usb.configfs").equals("1"))
+            throw new IllegalStateException("Device does not support ConfigFS");
+        if (isCreated(su))
             throw new IllegalStateException("USB gadget already exists");
-        }
 
         su.run(new String[]{
                 "mkdir " + gadgetPath,
                 "cd " + gadgetPath,
-                Command.echoToFile(params_.idProduct, "idProduct"),
-                Command.echoToFile(params_.idVendor, "idVendor"),
+                Command.echoToFile(params.idProduct, "idProduct"),
+                Command.echoToFile(params.idVendor, "idVendor"),
                 Command.echoToFile("239", "bDeviceClass"),
                 Command.echoToFile("0x02", "bDeviceSubClass"),
                 Command.echoToFile("0x01", "bDeviceProtocol"),
 
                 "mkdir strings/0x409",
-                Command.echoToFile(params_.serial, "strings/0x409/serialnumber"),
-                Command.echoToFile(params_.manufacturer, "strings/0x409/manufacturer"),
-                Command.echoToFile(params_.product, "strings/0x409/product"),
+                Command.echoToFile(params.serial, "strings/0x409/serialnumber"),
+                Command.echoToFile(params.manufacturer, "strings/0x409/manufacturer"),
+                Command.echoToFile(params.product, "strings/0x409/product"),
 
                 String.format("mkdir \"configs/%s\"", CONFIG_DIR),
                 String.format("mkdir \"configs/%s/strings/0x409\"", CONFIG_DIR),
-                Command.echoToFile(params_.configName, String.format("configs/%s/strings/0x409/configuration", CONFIG_DIR)),
+                Command.echoToFile(params.configName, String.format("configs/%s/strings/0x409/configuration", CONFIG_DIR)),
         });
 
         for (UsbGadgetFunction function : this.functions_) {
@@ -84,62 +78,42 @@ public class UsbGadget {
     }
 
     public void bind(Shell.Threaded su) throws Shell.ShellDiedException {
-        String gadgetPath = getGadgetPath();
-        if (isBound(su)) {
+        String gadgetPath = getGadgetPath(gadget_name_);
+        if (!isCreated(su))
+            throw new IllegalStateException("USB gadget does not exist");
+        if (isBound(su))
             throw new IllegalStateException("USB gadget is already bound to UDC");
-        }
 
         for (UsbGadgetFunction function : this.functions_) {
             function.bind(su, gadgetPath, CONFIG_DIR);
         }
 
-        ArrayList<String> drivers = Command.ls(su, "/sys/class/udc");
-        if (drivers.size() != 1) {
-            // TODO allow multiple USB drivers
-            throw new IllegalStateException("There must be exactly one USB driver");
-        }
-        String udc = drivers.get(0);
-        this.oldGadgetUDCDriver_ = udc;
+        String udc = getSystemUDC(su);
+        if (udc.isEmpty()) throw new IllegalStateException("Could not determine system UDC");
 
-        // Look for other gadgets using the same usb driver
-        ArrayList<String> otherUsbGadgets = Command.ls(su, Paths.get(gadgetPath, "..").toString());
-        for (String otherUsbGadgetPath : otherUsbGadgets) {
-            String udcPath = Paths.get(gadgetPath, "..", otherUsbGadgetPath, "UDC").toString();
-            String driver = Command.readFile(su, udcPath);
-            if (driver.equals(udc)) {
-                // Backup the driver so we can restore it later
-                this.oldGadgetUsingUDC_ = udcPath;
-                su.run(Command.echoToFile("", udcPath));
-                break;
-            }
-        }
-
-        su.run(Command.echoToFile(udc, Paths.get(gadgetPath, "UDC").toString()));
+        su.run(Command.echoToFile("", getUDCPath(SYSTEM_GADGET)));
+        su.run(Command.echoToFile(udc, getUDCPath(gadget_name_)));
     }
 
     public void unbind(Shell.Threaded su) throws Shell.ShellDiedException {
-        if (!isBound(su)) {
+        if (!isCreated(su))
+            throw new IllegalStateException("USB gadget does not exist");
+        if (!isBound(su))
             throw new IllegalStateException("USB gadget is not bound to UDC");
-        }
 
-        // Disable gadget
-        su.run(Command.echoToFile("", getUDCPath()));
-        // Restore old driver if we need to
-        if (oldGadgetUsingUDC_ != null) {
-            su.run(Command.echoToFile(oldGadgetUDCDriver_, oldGadgetUsingUDC_));
-        }
+        su.run(Command.echoToFile("", getUDCPath(gadget_name_)));
+        su.run(Command.echoToFile(getSystemUDC(su), SYSTEM_GADGET));
 
-        String gadgetPath = getGadgetPath();
+        String gadgetPath = getGadgetPath(gadget_name_);
         for (UsbGadgetFunction function : this.functions_) {
             function.unbind(su, gadgetPath, CONFIG_DIR);
         }
     }
 
     public void remove(Shell.Threaded su) throws Shell.ShellDiedException {
-        String gadgetPath = getGadgetPath();
-        if (!Command.pathExists(su, gadgetPath)) {
+        String gadgetPath = getGadgetPath(gadget_name_);
+        if (!isCreated(su))
             throw new IllegalStateException("USB gadget does not exist");
-        }
 
         for (UsbGadgetFunction function : this.functions_) {
             function.remove(su, gadgetPath);
@@ -150,28 +124,52 @@ public class UsbGadget {
                 String.format("rmdir \"configs/%s\"", CONFIG_DIR),
                 "rmdir strings/0x409",
                 "cd ..",
-                String.format("rmdir \"%s\"", this.name_)
+                String.format("rmdir \"%s\"", this.gadget_name_)
         });
     }
 
-    public String getGadgetPath() {
-        return String.format("%s/usb_gadget/%s", configFsPath_, name_);
+    public String getGadgetPath(String gadgetName) {
+        return String.format("%s/usb_gadget/%s", configFsPath_, gadgetName);
     }
 
-    public String getUDCPath() {
-        return Paths.get(getGadgetPath(), "UDC").toString();
+    public String getUDCPath(String gadgetName) {
+        return Paths.get(getGadgetPath(gadgetName), "UDC").toString();
     }
 
-    public String getUDC(Shell.Threaded su) {
-        return Command.readFile(su, getUDCPath());
+    public String getActiveUDC(Shell.Threaded su, String gadgetName) throws Shell.ShellDiedException {
+        return Command.readFile(su, getUDCPath(gadgetName));
     }
 
-    public String getUDCState(Shell.Threaded su, String udc) {
+    public boolean isCreated(Shell.Threaded su) throws Shell.ShellDiedException {
+        return Command.pathExists(su, getGadgetPath(gadget_name_));
+    }
+
+    public boolean isBound(Shell.Threaded su) throws Shell.ShellDiedException {
+        return !getActiveUDC(su, gadget_name_).isEmpty();
+    }
+
+    public void addFunction(UsbGadgetFunction function) {
+        functions_.add(function);
+    }
+
+    public ArrayList<UsbGadgetFunction> getFunctions() {
+        return functions_;
+    }
+
+    public String serial() {
+        ArrayList<String> functionDir = new ArrayList<>();
+        for (UsbGadgetFunction function : getFunctions()) {
+            functionDir.add(function.getFunctionDir());
+        }
+        return String.format("%x", functionDir.hashCode());
+    }
+
+    public static String getSystemUDC(Shell.Threaded su) throws Shell.ShellDiedException {
+        return Command.getSystemProp(su, "sys.usb.controller");
+    }
+
+    public static String getUDCState(Shell.Threaded su, String udc) throws Shell.ShellDiedException {
         return Command.readFile(su, String.format("/sys/class/udc/%s/state", udc));
-    }
-
-    public boolean isBound(Shell.Threaded su) {
-        return !getUDC(su).isEmpty();
     }
 
 }

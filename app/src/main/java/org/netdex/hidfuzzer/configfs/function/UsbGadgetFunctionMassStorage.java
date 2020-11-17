@@ -23,9 +23,6 @@ public class UsbGadgetFunctionMassStorage extends UsbGadgetFunction {
 
         public long size = 256;   // in MB, ignored if the file already exists
 
-        public static final Parameters DEFAULT = new Parameters(
-                "/data/local/tmp/mass_storage-lun0.img", 256);
-
         public Parameters(String file, boolean ro, boolean removable,
                           boolean cdrom, boolean nofua, boolean stall, long size) {
             this.file = file;

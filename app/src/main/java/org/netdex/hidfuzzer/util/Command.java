@@ -44,27 +44,27 @@ public class Command {
         return sb.toString();
     }
 
-    public static String readFile(Shell.Interactive su, String path) {
+    public static String readFile(Shell.Interactive su, String path) throws Shell.ShellDiedException {
+        return readStdout(su, String.format("cat \"%s\"", path));
+    }
+
+    public static String readStdout(Shell.Interactive su, String command) throws Shell.ShellDiedException {
         StringBuilder sb = new StringBuilder();
         AtomicBoolean first = new AtomicBoolean(true);
-        try {
-            su.run(String.format("cat \"%s\"", path), new Shell.OnSyncCommandLineListener() {
-                @Override
-                public void onSTDERR(@NonNull String line) {
+        su.run(command, new Shell.OnSyncCommandLineListener() {
+            @Override
+            public void onSTDERR(@NonNull String line) {
 
-                }
+            }
 
-                @Override
-                public void onSTDOUT(@NonNull String line) {
-                    if (!first.getAndSet(false)) {
-                        sb.append('\n');
-                    }
-                    sb.append(line);
+            @Override
+            public void onSTDOUT(@NonNull String line) {
+                if (!first.getAndSet(false)) {
+                    sb.append('\n');
                 }
-            });
-        } catch (Shell.ShellDiedException e) {
-            e.printStackTrace();
-        }
+                sb.append(line);
+            }
+        });
         return sb.toString();
     }
 
@@ -90,6 +90,10 @@ public class Command {
             }
         });
         return files;
+    }
+
+    public static String getSystemProp(Shell.Interactive su, String prop) throws Shell.ShellDiedException {
+        return readStdout(su, String.format("getprop %s", prop));
     }
 
     /**

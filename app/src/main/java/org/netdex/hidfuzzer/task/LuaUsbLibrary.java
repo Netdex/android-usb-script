@@ -13,8 +13,10 @@ import org.luaj.vm2.lib.ZeroArgFunction;
 import org.netdex.hidfuzzer.configfs.UsbGadget;
 import org.netdex.hidfuzzer.configfs.function.UsbGadgetFunctionHid;
 import org.netdex.hidfuzzer.configfs.function.UsbGadgetFunctionMassStorage;
-import org.netdex.hidfuzzer.function.HidInterface;
-import org.netdex.hidfuzzer.function.Input;
+import org.netdex.hidfuzzer.function.HidDescriptor;
+import org.netdex.hidfuzzer.function.HidInput;
+import org.netdex.hidfuzzer.function.HidKeyboardInterface;
+import org.netdex.hidfuzzer.function.HidMouseInterface;
 
 import java.io.IOException;
 
@@ -37,6 +39,15 @@ public class LuaUsbLibrary {
 
         LuaFunction library = new luausb();
         globals.set(library.name(), library.call());
+        for (HidInput.Keyboard.Key ikk : HidInput.Keyboard.Key.values()) {
+            globals.set(ikk.name(), ikk.code);
+        }
+        for (HidInput.Keyboard.Mod ikm : HidInput.Keyboard.Mod.values()) {
+            globals.set(ikm.name(), ikm.code);
+        }
+        for (HidInput.Mouse.Button imb : HidInput.Mouse.Button.values()) {
+            globals.set(imb.name(), imb.code);
+        }
     }
 
     /**
@@ -79,11 +90,6 @@ public class LuaUsbLibrary {
                         new delay(), new log(), new should(), new ask(), new state()}) {
                     library.set(f.name(), f);
                 }
-//                LuaTable mouseButtons = tableOf();
-//                for (Input.M.B imb : Input.M.B.values()) {
-//                    mouseButtons.set(imb.name(), imb.code);
-//                }
-//                library.set("mouse", mouseButtons);
 
                 LuaTable dev = tableOf();
                 for (int i = 1; i <= args.narg(); ++i) {
@@ -91,31 +97,53 @@ public class LuaUsbLibrary {
                     String type = config.get("type").checkjstring();
                     int id = config.get("id").checkint();
 
-                    LuaValue device = null;
-                    if (type.equals("keyboard")) {
-                        UsbGadgetFunctionHid fcnHid = new UsbGadgetFunctionHid(
-                                id, UsbGadgetFunctionHid.Parameters.DEFAULT);
-                        usbGadget_.addFunction(fcnHid);
-                        device = new keyboard(id).call();
-                    } else if (type.equals("storage")) {
-                        String file = config.get("file").optjstring("/data/local/tmp/mass_storage-lun0.img");
-                        boolean ro = config.get("ro").optboolean(false);
-                        long size = config.get("size").optlong(256);
+                    LuaValue device;
+                    switch (type) {
+                        case "keyboard": {
+                            UsbGadgetFunctionHid fcnHid = new UsbGadgetFunctionHid(
+                                    id, HidDescriptor.KEYBOARD.getParameters());
+                            usbGadget_.addFunction(fcnHid);
+                            device = new keyboard(id).call();
+                            break;
+                        }
+                        case "mouse": {
+                            UsbGadgetFunctionHid fcnHid = new UsbGadgetFunctionHid(
+                                    id, HidDescriptor.MOUSE.getParameters());
+                            usbGadget_.addFunction(fcnHid);
+                            device = new mouse(id).call();
+                            break;
+                        }
+                        case "storage":
+                            String file = config.get("file").optjstring("/data/local/tmp/mass_storage-lun0.img");
+                            boolean ro = config.get("ro").optboolean(false);
+                            long size = config.get("size").optlong(256);
 
-                        UsbGadgetFunctionMassStorage.Parameters storParam =
-                                new UsbGadgetFunctionMassStorage.Parameters(
-                                        file, ro, true, false, false, true, size);
-                        UsbGadgetFunctionMassStorage fcnStor = new UsbGadgetFunctionMassStorage(
-                                id, storParam);
-                        usbGadget_.addFunction(fcnStor);
-                        device = new storage(id).call();
-                    } else {
-                        throw new LuaError(String.format("Invalid function type \"%s\"", type));
+                            UsbGadgetFunctionMassStorage.Parameters storParam =
+                                    new UsbGadgetFunctionMassStorage.Parameters(
+                                            file, ro, true, false, false, true, size);
+                            UsbGadgetFunctionMassStorage fcnStor = new UsbGadgetFunctionMassStorage(
+                                    id, storParam);
+                            usbGadget_.addFunction(fcnStor);
+                            device = new storage(id).call();
+                            break;
+                        default:
+                            throw new LuaError(String.format("Invalid function type \"%s\"", type));
                     }
                     dev.set(i, device);
                 }
+
+                // MITIGATION: Windows seems to memoize usb configurations by serial number
+                // (not across reboots). This causes undefined behavior when the configuration
+                // changes. Generate a serial number based on the configuration.
+                UsbGadget.Parameters gadgetParameters = new UsbGadget.Parameters(
+                        "netdex",
+                        usbGadget_.serial(),
+                        "0x1d6b",
+                        "0x104",
+                        "HIDFuzzer",
+                        "Composite");
                 try {
-                    usbGadget_.create(su_);
+                    usbGadget_.create(su_, gadgetParameters);
                     usbGadget_.bind(su_);
                 } catch (Shell.ShellDiedException e) {
                     throw new LuaError(e);
@@ -130,6 +158,7 @@ public class LuaUsbLibrary {
             public LuaValue call(LuaValue arg) {
                 long d = arg.checklong();
                 try {
+                    if (Thread.interrupted()) throw new InterruptedException();
                     Thread.sleep(d);
                 } catch (InterruptedException e) {
                     throw new LuaError(e);
@@ -171,52 +200,38 @@ public class LuaUsbLibrary {
         class state extends ZeroArgFunction {
             @Override
             public LuaValue call() {
-                return valueOf(usbGadget_.getUDCState(su_, usbGadget_.getUDC(su_)));
+                try {
+                    return valueOf(UsbGadget.getUDCState(su_, UsbGadget.getSystemUDC(su_)));
+                } catch (Shell.ShellDiedException e) {
+                    throw new LuaError(e);
+                }
             }
         }
 
         class keyboard extends ZeroArgFunction {
-            private final HidInterface hid_;
+            private final HidKeyboardInterface hid_;
 
             public keyboard(int id) {
                 String devicePath = String.format("/dev/hidg%d", id);
-                this.hid_ = new HidInterface(su_, devicePath);
+                this.hid_ = new HidKeyboardInterface(su_, devicePath);
             }
 
             @Override
             public LuaValue call() {
                 LuaValue library = tableOf();
-                for (Input.KB.K ikk : Input.KB.K.values()) {
-                    library.set(ikk.name(), ikk.c);
-                }
-                for (Input.KB.M ikm : Input.KB.M.values()) {
-                    library.set(ikm.name(), ikm.c);
-                }
                 for (LuaFunction f : new LuaFunction[]{
-                        new hid_mouse(), new hid_keyboard(), new press_keys(), new send_string()}) {
+                        new raw(), new press_keys(), new send_string()}) {
                     library.set(f.name(), f);
                 }
                 return library;
             }
 
-            class hid_mouse extends VarArgFunction {
+            class raw extends VarArgFunction {
                 @Override
                 public Varargs invoke(Varargs args) {
                     byte[] a = new byte[args.narg()];
                     for (int i = 1; i <= args.narg(); ++i) {
-                        a[i - 1] = (byte) args.arg(i).checkint();
-                    }
-                    hid_.sendMouse(a);
-                    return NONE;
-                }
-            }
-
-            class hid_keyboard extends VarArgFunction {
-                @Override
-                public Varargs invoke(Varargs args) {
-                    byte[] a = new byte[args.narg()];
-                    for (int i = 1; i <= args.narg(); ++i) {
-                        a[i - 1] = (byte) args.arg(i).checkint();
+                        a[i - 1] = checkbyte(args.arg(i).checkint());
                     }
                     try {
                         hid_.sendKeyboard(a);
@@ -232,7 +247,7 @@ public class LuaUsbLibrary {
                 public Varargs invoke(Varargs args) {
                     byte[] a = new byte[args.narg()];
                     for (int i = 1; i <= args.narg(); ++i) {
-                        a[i - 1] = (byte) args.arg(i).checkint();
+                        a[i - 1] = checkbyte(args.arg(i).checkint());
                     }
                     try {
                         hid_.pressKeys(a);
@@ -246,12 +261,92 @@ public class LuaUsbLibrary {
             class send_string extends TwoArgFunction {
 
                 @Override
-                public LuaValue call(LuaValue string, LuaValue delay) {
-                    String s = string.checkjstring();
-                    int d = delay.isnil() ? 0 : delay.checkint();
+                public LuaValue call(LuaValue arg1, LuaValue arg2) {
+                    String string = arg1.checkjstring();
+                    long delay = arg2.optlong(0);
                     try {
-                        hid_.sendKeyboard(s, d);
+                        hid_.sendKeyboard(string, delay);
                     } catch (Shell.ShellDiedException | IOException | InterruptedException e) {
+                        throw new LuaError(e);
+                    }
+                    return NIL;
+                }
+            }
+        }
+
+        class mouse extends ZeroArgFunction {
+
+            private final HidMouseInterface hid_;
+
+            public mouse(int id) {
+                String devicePath = String.format("/dev/hidg%d", id);
+                this.hid_ = new HidMouseInterface(su_, devicePath);
+            }
+
+            @Override
+            public LuaValue call() {
+                LuaValue library = tableOf();
+                for (LuaFunction f : new LuaFunction[]{
+                        new raw(), new click(), new move(), new scroll()}) {
+                    library.set(f.name(), f);
+                }
+                return library;
+            }
+
+            class raw extends VarArgFunction {
+                @Override
+                public Varargs invoke(Varargs args) {
+                    byte[] a = new byte[args.narg()];
+                    for (int i = 1; i <= args.narg(); ++i) {
+                        a[i - 1] = (byte) args.arg(i).checkint();
+                    }
+                    try {
+                        hid_.sendMouse(a);
+                    } catch (Shell.ShellDiedException | IOException e) {
+                        throw new LuaError(e);
+                    }
+                    return NONE;
+                }
+            }
+
+            class click extends TwoArgFunction {
+
+                @Override
+                public LuaValue call(LuaValue arg1, LuaValue arg2) {
+                    byte mask = checkbyte(arg1.checkint());
+                    long duration = arg2.optlong(0);
+                    try {
+                        hid_.click(mask, duration);
+                    } catch (Shell.ShellDiedException | IOException | InterruptedException e) {
+                        throw new LuaError(e);
+                    }
+                    return NIL;
+                }
+            }
+
+            class move extends TwoArgFunction {
+
+                @Override
+                public LuaValue call(LuaValue arg1, LuaValue arg2) {
+                    byte dx = checkbyte(arg1.checkint());
+                    byte dy = checkbyte(arg2.checkint());
+                    try {
+                        hid_.move(dx, dy);
+                    } catch (Shell.ShellDiedException | IOException e) {
+                        throw new LuaError(e);
+                    }
+                    return NIL;
+                }
+            }
+
+            class scroll extends OneArgFunction {
+
+                @Override
+                public LuaValue call(LuaValue arg) {
+                    byte offset = checkbyte(arg.checkint());
+                    try {
+                        hid_.scroll(offset);
+                    } catch (Shell.ShellDiedException | IOException e) {
                         throw new LuaError(e);
                     }
                     return NIL;
@@ -271,77 +366,9 @@ public class LuaUsbLibrary {
         }
     }
 
-
-//    class kblite_begin extends ZeroArgFunction {
-//
-//        @Override
-//        public LuaValue call() {
-//            if (mKBLiteRoutine != null) throw new IllegalStateException("kblite already enabled!");
-//            mKBLiteRoutine = new LuaThread(globals_, new kblite_coroutine_func(globals_));
-//            kbliteStarted = true;
-//            Varargs result = mKBLiteRoutine.resume(NONE);
-//            return result.arg1();
-//        }
-//    }
-
-//    class kblite_stop extends ZeroArgFunction {
-//
-//        @Override
-//        public LuaValue call() {
-//            kbliteStarted = false;
-//            mKBLiteRoutine = null;
-//            hid_.getKeyboardLightListener().kill();
-//            return NIL;
-//        }
-//    }
-
-    //    class kblite_get extends ZeroArgFunction {
-//
-//        @Override
-//        public LuaValue call() {
-//            if (!kbliteStarted) throw new LuaError("kblite not started!");
-//            return mKBLiteRoutine.resume(NONE).arg(2);
-//        }
-//    }
-//
-//    class kblite_available extends ZeroArgFunction {
-//
-//        @Override
-//        public LuaValue call() {
-//            int val = hid_.getKeyboardLightListener().available();
-//            return valueOf(val > 0);
-//        }
-//    }
-//
-//    class kblite_coroutine_func extends ZeroArgFunction {
-//
-//        private final Globals globals;
-//
-//        kblite_coroutine_func(Globals globals) {
-//            this.globals = globals;
-//        }
-//
-//        @Override
-//        public LuaValue call() {
-//            HIDInterface.KeyboardLightListener kll = hid_.getKeyboardLightListener();
-//            kll.start();
-//            globals.yield(NONE);
-//            while (kll.available() >= 0) {
-//                int val = kll.read();
-//                boolean num = (val & 0x1) != 0;
-//                boolean caps = (val & 0x2) != 0;
-//                boolean scroll = (val & 0x4) != 0;
-//                LuaTable result = tableOf();
-//                result.set("num", valueOf(num));
-//                result.set("caps", valueOf(caps));
-//                result.set("scroll", valueOf(scroll));
-//                globals.yield(varargsOf(new LuaValue[]{result}));
-//            }
-//            kbliteStarted = false;
-//            return NIL;
-//        }
-//    }
-//
-
-
+    public static byte checkbyte(int n) {
+        if (n < Byte.MIN_VALUE || n > Byte.MAX_VALUE)
+            throw new LuaError("bad argument: byte expected");
+        return (byte) n;
+    }
 }

@@ -5,7 +5,7 @@
 usb = luausb.create({ id = 0, type = "keyboard" })
 kb = usb.dev[1]
 
-local file = usb.ask("Wallpaper to download?", "https://i.redd.it/ur1mqcbpxou51.png")
+local file = usb.ask("Wallpaper to download?", "https://i.imgur.com/46wWHZ3.png")
 
 while true do
     usb.log("idle")
@@ -18,7 +18,7 @@ while true do
     usb.log("running")
     usb.delay(1000)
 
-    kb.press_keys(kb.LSUPER, kb.R)
+    kb.press_keys(MOD_LSUPER, KEY_R)
     usb.delay(2000)
     kb.send_string("powershell\n")
     usb.delay(2000)

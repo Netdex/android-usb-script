@@ -24,16 +24,16 @@ while true do
     if runAs then
         -- when running elevated prompt sometimes it pops in background, so we need
         -- to go to the desktop
-        kb.press_keys(kb.LSUPER, kb.D)
+        kb.press_keys(MOD_LSUPER, KEY_D)
         usb.delay(500)
-        kb.press_keys(kb.LSUPER, kb.R)
+        kb.press_keys(MOD_LSUPER, KEY_R)
         usb.delay(2000)
         kb.send_string("powershell Start-Process powershell -Verb runAs\n")
         usb.delay(3000)
-        kb.press_keys(kb.LALT, kb.Y)
+        kb.press_keys(MOD_LALT, KEY_Y)
         usb.delay(2000)
     else
-        kb.press_keys(kb.LSUPER, kb.R)
+        kb.press_keys(MOD_LSUPER, KEY_R)
         usb.delay(2000)
         kb.send_string("powershell\n")
         usb.delay(2000)
