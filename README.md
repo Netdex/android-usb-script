@@ -21,21 +21,25 @@ its wallpaper
 usb = luausb.create({ id = 0, type = "keyboard" })
 kb = usb.dev[1]
 
-local file = "https://i.redd.it/ur1mqcbpxou51.png"
+local file = prompt("Wallpaper to download?", "https://i.imgur.com/46wWHZ3.png")
 
 while true do
+    print("idle")
+
     -- wait for the phone to be plugged into a computer
-    while not kb.test() do usb.delay(1000) end
+    while usb.state() == "not attached" do
+        wait(1000)
+    end
 
-    usb.delay(1000)
+    print("running")
+    wait(1000)
 
-    kb.press_keys(kb.LSUPER, kb.R)  -- open the Windows run dialog
-    usb.delay(2000)                 -- wait 2 seconds
-    kb.send_string("powershell\n")  -- pop open a powershell window
-    usb.delay(2000)
-
-    -- enter a script that changes your wallpaper
-    kb.send_string("[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;" ..
+    kb.chord(MOD_LSUPER, KEY_R)     -- open Windows run dialog
+    wait(2000)                      -- wait for it to open
+    kb.string("powershell\n")       -- open powershell
+    wait(2000)
+    -- execute a script that downloads and changes the wallpaper
+    kb.string("[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;" ..
             "(new-object System.Net.WebClient).DownloadFile('" .. file .. "',\"$Env:Temp\\b.jpg\");\n" ..
             "Add-Type @\"\n" ..
             "using System;using System.Runtime.InteropServices;using Microsoft.Win32;namespa" ..
@@ -48,8 +52,11 @@ while true do
             "[W.S]::SW(\"$Env:Temp\\b.jpg\")\n" ..
             "exit\n")
 
-    -- wait for the phone to be unplugged
-    while kb.test() do usb.delay(1000) end
+    print("done")
+    -- wait until the phone is unplugged
+    while usb.state() == "configured" do
+        wait(1000)
+    end
 end
 ```
 
