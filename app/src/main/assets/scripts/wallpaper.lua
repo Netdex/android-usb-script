@@ -5,24 +5,24 @@
 usb = luausb.create({ id = 0, type = "keyboard" })
 kb = usb.dev[1]
 
-local file = usb.ask("Wallpaper to download?", "https://i.imgur.com/46wWHZ3.png")
+local file = prompt("Wallpaper to download?", "https://i.imgur.com/46wWHZ3.png")
 
 while true do
-    usb.log("idle")
+    print("idle")
 
     -- poll until usb plugged in
     while usb.state() == "not attached" do
-        usb.delay(1000)
+        wait(1000)
     end
 
-    usb.log("running")
-    usb.delay(1000)
+    print("running")
+    wait(1000)
 
-    kb.press_keys(MOD_LSUPER, KEY_R)
-    usb.delay(2000)
-    kb.send_string("powershell\n")
-    usb.delay(2000)
-    kb.send_string("[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;" ..
+    kb.chord(MOD_LSUPER, KEY_R)
+    wait(2000)
+    kb.string("powershell\n")
+    wait(2000)
+    kb.string("[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;" ..
             "(new-object System.Net.WebClient).DownloadFile('" .. file .. "',\"$Env:Temp\\b.jpg\");\n" ..
             "Add-Type @\"\n" ..
             "using System;using System.Runtime.InteropServices;using Microsoft.Win32;namespa" ..
@@ -35,9 +35,9 @@ while true do
             "[W.S]::SW(\"$Env:Temp\\b.jpg\")\n" ..
             "exit\n")
 
-    usb.log("done")
+    print("done")
     -- poll until usb unplugged
     while usb.state() == "configured" do
-        usb.delay(1000)
+        wait(1000)
     end
 end

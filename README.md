@@ -53,6 +53,9 @@ while true do
 end
 ```
 
+Several other sample scripts are
+[included in the repository](https://github.com/Netdex/android-usb-script/tree/master/app/src/main/assets/scripts).
+
 ## Requirements
 **This app will not work on every Android device.** If your Android OS has Linux Kernel
 version >= 3.18 and is compiled with configfs and f_hid, then the app can try to create usb

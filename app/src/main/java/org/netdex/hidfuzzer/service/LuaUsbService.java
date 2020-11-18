@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
 
+import org.netdex.hidfuzzer.MainActivity;
 import org.netdex.hidfuzzer.R;
 import org.netdex.hidfuzzer.task.LuaUsbTask;
 
@@ -39,6 +40,7 @@ public class LuaUsbService extends Service {
     public static final int ONGOING_NOTIFICATION_ID = 1;
 
     private final ExecutorService executorService_ = Executors.newSingleThreadExecutor();
+    private LuaUsbTask activeTask_ = null;
 
     public LuaUsbService() {
 
@@ -52,12 +54,16 @@ public class LuaUsbService extends Service {
                         .setSmallIcon(R.drawable.ic_baseline_usb_24)
                         .build();
         startForeground(ONGOING_NOTIFICATION_ID, notification);
+        executorService_.execute(() -> run(task, callback));
+    }
 
-        executorService_.execute(() -> {
-            task.run();
-            stopForeground(true);
-            callback.onTaskCompleted();
-        });
+    public void run(LuaUsbTask task, TaskCompletedCallback callback) {
+        if (activeTask_ != null)
+            throw new IllegalStateException("Previous task did not terminate");
+        activeTask_ = task;
+        task.run();
+        activeTask_ = null;
+        callback.onTaskCompleted();
     }
 
     @Override
@@ -67,14 +73,15 @@ public class LuaUsbService extends Service {
 
     @Override
     public boolean onUnbind(Intent intent) {
+        if (activeTask_ != null) activeTask_.setCancelled(true);
         executorService_.shutdownNow();
         try {
-            executorService_.awaitTermination(5, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            // TODO handle more gracefully
-            e.printStackTrace();
+            if (executorService_.awaitTermination(5, TimeUnit.SECONDS)) {
+                return false;
+            }
+        } catch (InterruptedException ignored) {
         }
-        return false;
+        throw new IllegalStateException("Interpreter thread is hung");
     }
 
     @Override

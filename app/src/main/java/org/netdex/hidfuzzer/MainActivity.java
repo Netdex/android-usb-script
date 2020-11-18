@@ -14,6 +14,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -79,11 +80,15 @@ public class MainActivity extends AppCompatActivity {
 
     public void createLuaUsbService(LuaUsbTask task) {
         if (activeServiceConn_ != null) {
-            terminateLuaUsbService();
+            Toast.makeText(this, "A task is already running", Toast.LENGTH_SHORT).show();
+            return;
         }
         Intent serviceIntent = new Intent(this, LuaUsbService.class);
         activeServiceConn_ =
-                new LuaUsbServiceConnection(task, () -> handler_.post(() -> btnCancel_.setEnabled(false)));
+                new LuaUsbServiceConnection(task, () -> {
+                    activeServiceConn_ = null;
+                    handler_.post(() -> btnCancel_.setEnabled(false)); // TODO need to unbind...
+                });
         bindService(serviceIntent, activeServiceConn_, BIND_AUTO_CREATE);
         btnCancel_.setEnabled(true);
     }
@@ -92,7 +97,6 @@ public class MainActivity extends AppCompatActivity {
         if (activeServiceConn_ != null) {
             btnCancel_.setEnabled(false);
             unbindService(activeServiceConn_); // TODO this can cause ANR
-            activeServiceConn_ = null;
         }
     }
 

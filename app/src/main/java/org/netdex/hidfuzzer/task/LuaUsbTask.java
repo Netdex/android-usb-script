@@ -8,6 +8,7 @@ import org.netdex.hidfuzzer.configfs.UsbGadget;
 import org.netdex.hidfuzzer.util.Command;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import eu.chainfire.libsuperuser.Shell;
 
@@ -20,6 +21,7 @@ public class LuaUsbTask implements Runnable {
     private final String name_;
     private final String src_;
     private final AsyncIOBridge aio_;
+    private AtomicBoolean cancelled_ = new AtomicBoolean(false);
 
     public LuaUsbTask(String name, String src, AsyncIOBridge ioBridge) {
         this.name_ = name;
@@ -35,19 +37,15 @@ public class LuaUsbTask implements Runnable {
             su = Shell.Pool.SU.get();
 
             UsbGadget usbGadget;
-            if (Command.pathExists(su, "/config")) {
-                usbGadget = new UsbGadget("hidf", "/config");
-            } else {
-                aio_.onLogMessage("No method exists for accessing hid gadget");
-                return;
-            }
+            usbGadget = new UsbGadget("hidf", "/config");
 
             try {
                 aio_.onLogMessage("<b>-- Started <i>" + name_ + "</i></b>");
 
                 try {
                     Globals globals = JsePlatform.standardGlobals();
-                    LuaUsbLibrary luaUsbLibrary = new LuaUsbLibrary(globals, su, usbGadget, aio_);
+                    LuaUsbLibrary luaUsbLibrary = new LuaUsbLibrary(su, usbGadget, aio_, cancelled_);
+                    luaUsbLibrary.bind(globals);
                     LuaValue luaChunk_ = globals.load(src_);
                     luaChunk_.call();
                 } catch (LuaError e) {
@@ -82,5 +80,13 @@ public class LuaUsbTask implements Runnable {
 
     public String getName() {
         return name_;
+    }
+
+    public void setCancelled(boolean cancelled) {
+        cancelled_.set(cancelled);
+    }
+
+    public boolean isCancelled() {
+        return cancelled_.get();
     }
 }

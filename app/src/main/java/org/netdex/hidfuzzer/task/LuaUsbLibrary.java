@@ -19,6 +19,7 @@ import org.netdex.hidfuzzer.function.HidKeyboardInterface;
 import org.netdex.hidfuzzer.function.HidMouseInterface;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import eu.chainfire.libsuperuser.Shell;
 
@@ -31,14 +32,21 @@ public class LuaUsbLibrary {
     private final Shell.Threaded su_;
     private final UsbGadget usbGadget_;
     private final AsyncIOBridge aio_;
+    private final AtomicBoolean cancelled_;
 
-    public LuaUsbLibrary(Globals globals, Shell.Threaded su, UsbGadget usbGadget, AsyncIOBridge aio) {
+    public LuaUsbLibrary(Shell.Threaded su, UsbGadget usbGadget, AsyncIOBridge aio, AtomicBoolean cancelled) {
         this.aio_ = aio;
         this.su_ = su;
         this.usbGadget_ = usbGadget;
+        this.cancelled_ = cancelled;
+    }
 
+    public void bind(Globals globals){
         LuaFunction library = new luausb();
         globals.set(library.name(), library.call());
+        for (LuaFunction f : new LuaFunction[]{new wait(), new print(), new confirm(), new prompt()}) {
+            globals.set(f.name(), f);
+        }
         for (HidInput.Keyboard.Key ikk : HidInput.Keyboard.Key.values()) {
             globals.set(ikk.name(), ikk.code);
         }
@@ -49,6 +57,51 @@ public class LuaUsbLibrary {
             globals.set(imb.name(), imb.code);
         }
     }
+
+    class wait extends OneArgFunction {
+        @Override
+        public LuaValue call(LuaValue arg) {
+            long d = arg.checklong();
+            try {
+                if (cancelled_.get()) throw new InterruptedException();
+                Thread.sleep(d);
+            } catch (InterruptedException e) {
+                throw new LuaError(e);
+            }
+            return NIL;
+        }
+    }
+
+    class print extends OneArgFunction {
+
+        @Override
+        public LuaValue call(LuaValue arg) {
+            String msg = arg.tojstring();
+            aio_.onLogMessage(msg);
+            return NIL;
+        }
+    }
+
+    class confirm extends TwoArgFunction {
+
+        @Override
+        public LuaValue call(LuaValue title, LuaValue message) {
+            String t = title.tojstring();
+            String m = message.tojstring();
+            return valueOf(aio_.onConfirm(t, m));
+        }
+    }
+
+    class prompt extends TwoArgFunction {
+
+        @Override
+        public LuaValue call(LuaValue title, LuaValue defaults) {
+            String t = title.tojstring();
+            String d = defaults.isnil() ? "" : defaults.tojstring();
+            return valueOf(aio_.onPrompt(t, d));
+        }
+    }
+
 
     /**
      * luausb library generator function
@@ -86,8 +139,7 @@ public class LuaUsbLibrary {
             @Override
             public Varargs invoke(Varargs args) {
                 LuaTable library = tableOf();
-                for (LuaFunction f : new LuaFunction[]{
-                        new delay(), new log(), new should(), new ask(), new state()}) {
+                for (LuaFunction f : new LuaFunction[]{new state()}) {
                     library.set(f.name(), f);
                 }
 
@@ -153,50 +205,6 @@ public class LuaUsbLibrary {
             }
         }
 
-        class delay extends OneArgFunction {
-            @Override
-            public LuaValue call(LuaValue arg) {
-                long d = arg.checklong();
-                try {
-                    if (Thread.interrupted()) throw new InterruptedException();
-                    Thread.sleep(d);
-                } catch (InterruptedException e) {
-                    throw new LuaError(e);
-                }
-                return NIL;
-            }
-        }
-
-        class log extends OneArgFunction {
-
-            @Override
-            public LuaValue call(LuaValue arg) {
-                String msg = arg.tojstring();
-                aio_.onLogMessage(msg);
-                return NIL;
-            }
-        }
-
-        class should extends TwoArgFunction {
-
-            @Override
-            public LuaValue call(LuaValue title, LuaValue message) {
-                String t = title.tojstring();
-                String m = message.tojstring();
-                return valueOf(aio_.onConfirm(t, m));
-            }
-        }
-
-        class ask extends TwoArgFunction {
-
-            @Override
-            public LuaValue call(LuaValue title, LuaValue defaults) {
-                String t = title.tojstring();
-                String d = defaults.isnil() ? "" : defaults.tojstring();
-                return valueOf(aio_.onPrompt(t, d));
-            }
-        }
-
         class state extends ZeroArgFunction {
             @Override
             public LuaValue call() {
@@ -220,7 +228,7 @@ public class LuaUsbLibrary {
             public LuaValue call() {
                 LuaValue library = tableOf();
                 for (LuaFunction f : new LuaFunction[]{
-                        new raw(), new press_keys(), new send_string()}) {
+                        new raw(), new chord(), new press(), new string()}) {
                     library.set(f.name(), f);
                 }
                 return library;
@@ -242,11 +250,25 @@ public class LuaUsbLibrary {
                 }
             }
 
-            class press_keys extends VarArgFunction {
+            class chord extends VarArgFunction {
                 @Override
                 public Varargs invoke(Varargs args) {
+                    args.argcheck(args.narg() >= 2, 0, "at least 2 args required");
+
+                    byte mask;
+                    if (args.arg1().isint()) {
+                        mask = checkbyte(args.checkint(1));
+                    } else {
+                        mask = 0;
+                        LuaTable mods = args.checktable(1);
+                        for (int i = 1; i <= mods.length(); ++i) {
+                            mask |= checkbyte(mods.get(i).checkint());
+                        }
+                    }
+
                     byte[] a = new byte[args.narg()];
-                    for (int i = 1; i <= args.narg(); ++i) {
+                    a[0] = mask;
+                    for (int i = 2; i <= args.narg(); ++i) {
                         a[i - 1] = checkbyte(args.arg(i).checkint());
                     }
                     try {
@@ -258,7 +280,25 @@ public class LuaUsbLibrary {
                 }
             }
 
-            class send_string extends TwoArgFunction {
+            class press extends VarArgFunction {
+                @Override
+                public Varargs invoke(Varargs args) {
+                    byte[] a = new byte[args.narg() + 1];
+                    a[0] = HidInput.Keyboard.Mod.MOD_NONE.code;
+                    for (int i = 1; i <= args.narg(); ++i) {
+                        a[i] = checkbyte(args.arg(i).checkint());
+                    }
+                    try {
+                        hid_.pressKeys(a);
+                    } catch (Shell.ShellDiedException | IOException e) {
+                        throw new LuaError(e);
+                    }
+                    return NONE;
+                }
+
+            }
+
+            class string extends TwoArgFunction {
 
                 @Override
                 public LuaValue call(LuaValue arg1, LuaValue arg2) {

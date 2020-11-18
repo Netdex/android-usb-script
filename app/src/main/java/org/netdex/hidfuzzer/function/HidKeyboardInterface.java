@@ -94,17 +94,18 @@ public class HidKeyboardInterface {
      * @param d Delay after key press
      */
     public void sendKeyboard(String s, long d) throws Shell.ShellDiedException, IOException, InterruptedException {
-        char lc = Character.MIN_VALUE;
+        byte lcd = 0;
         for (char c : s.toCharArray()) {
             byte cd = AP_MAP_CODE[(int) c];
             boolean st = AP_MAP_SHIFT[(int) c];
             if (cd == -1)
                 throw new IllegalArgumentException("Given string contains illegal characters");
-            if (Character.toLowerCase(c) == Character.toLowerCase(lc)) sendKeyboard();
+            if (lcd == cd) sendKeyboard();
             sendKeyboard(st ? HidInput.Keyboard.Mod.MOD_LSHIFT.code : 0, cd);
-            if (Thread.interrupted()) throw new InterruptedException();
-            if (d > 0) Thread.sleep(d);
-            lc = c;
+            if (d > 0) {
+                Thread.sleep(d);
+            }
+            lcd = cd;
         }
         sendKeyboard();
     }

@@ -48,8 +48,8 @@ public class UsbGadget {
 
     public void create(Shell.Threaded su, Parameters params) throws Shell.ShellDiedException {
         String gadgetPath = getGadgetPath(gadget_name_);
-        if (!Command.getSystemProp(su, "sys.usb.configfs").equals("1"))
-            throw new IllegalStateException("Device does not support ConfigFS");
+        if (!isSupported(su))
+            throw new UnsupportedOperationException("Device does not support ConfigFS");
         if (isCreated(su))
             throw new IllegalStateException("USB gadget already exists");
 
@@ -128,6 +128,11 @@ public class UsbGadget {
         });
     }
 
+    public boolean isSupported(Shell.Threaded su) throws Shell.ShellDiedException {
+        return Command.pathExists(su, configFsPath_)
+                && Command.getSystemProp(su, "sys.usb.configfs").equals("1");
+    }
+
     public String getGadgetPath(String gadgetName) {
         return String.format("%s/usb_gadget/%s", configFsPath_, gadgetName);
     }
@@ -171,5 +176,4 @@ public class UsbGadget {
     public static String getUDCState(Shell.Threaded su, String udc) throws Shell.ShellDiedException {
         return Command.readFile(su, String.format("/sys/class/udc/%s/state", udc));
     }
-
 }

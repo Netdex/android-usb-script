@@ -42,7 +42,8 @@ public class PromptDialog {
         try {
             mainThreadHandler.post(() -> builder_.show());
             latch_.await();
-        } catch (InterruptedException ignored) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
         return result_.get();
     }

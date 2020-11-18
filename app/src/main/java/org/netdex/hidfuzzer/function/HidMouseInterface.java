@@ -18,8 +18,9 @@ public class HidMouseInterface {
 
     public void click(byte mask, long duration) throws Shell.ShellDiedException, IOException, InterruptedException {
         sendMouse(mask);
-        if (Thread.interrupted()) throw new InterruptedException();
-        if (duration > 0) Thread.sleep(duration);
+        if (duration > 0) {
+            Thread.sleep(duration);
+        }
         sendMouse();
     }
 

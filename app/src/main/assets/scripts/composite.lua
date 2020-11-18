@@ -7,30 +7,30 @@ kb1 = usb.dev[1]
 kb2 = usb.dev[2]
 
 while true do
-    usb.log("idle")
+    print("idle")
 
     -- poll until usb plugged in
     while usb.state() == "not attached" do
-        usb.delay(1000)
+        wait(1000)
     end
 
-    usb.log("running")
-    usb.delay(1000)
+    print("running")
+    wait(1000)
 
     -- send a string from keyboard 1
     kb1.send_string("kb1")
-    usb.delay(1000)
+    wait(1000)
     -- send a string from keyboard 2
     kb2.send_string("kb2")
 
-    usb.log("done")
+    print("done")
 
     -- poll until usb unplugged
     while usb.state() == "configured" do
-        usb.delay(1000)
+        wait(1000)
     end
 
-    usb.log("disconnected")
+    print("disconnected")
 
-    usb.delay(1000)
+    wait(1000)
 end
