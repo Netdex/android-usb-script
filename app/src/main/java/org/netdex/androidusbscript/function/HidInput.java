@@ -1,4 +1,4 @@
-package org.netdex.hidfuzzer.function;
+package org.netdex.androidusbscript.function;
 
 /**
  * Created by netdex on 1/15/2017.

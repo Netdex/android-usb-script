@@ -1,10 +1,9 @@
-package org.netdex.hidfuzzer.util;
+package org.netdex.androidusbscript.util;
 
 import androidx.annotation.NonNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import eu.chainfire.libsuperuser.Shell;

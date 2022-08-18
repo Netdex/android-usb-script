@@ -7,7 +7,7 @@ with arbitrary composite USB devices.
 
 **Root access is required.**
 
-## [Demonstration](https://streamable.com/oeyrik)
+## Demonstration
 
 The best way to explain what this app does is with a code example. The following script
 does the following when interpreted by this app:
@@ -70,6 +70,18 @@ gadgets.
 
 New demo applications can be added to `assets/scripts`. The API is pretty much self-documenting,
 just look at the existing demos to get a feel for how the API works.
+
+## Troubleshooting
+### "Device Malfunctioned" on Windows 10
+There may be an incompatibility between the supported USB speed between the USB function and USB
+port. For example, if you try to use the HID function on a port that only supports USB SuperSpeed,
+you will get this error. This is common when using certain USB 3.0 hubs. If you plugged into a USB
+hub, try using a port connected to the USB Root Hub. If you plugged into a USB 3.0 port, try using a
+USB 2.0 port.
+
+### "java.io.IOException: Could not write to /dev/hidgX"
+Try setting SELinux to permissive mode by running `setenforce 0` as root.
+
 
 ## Third-party
 - [libsuperuser](https://github.com/Chainfire/libsuperuser)

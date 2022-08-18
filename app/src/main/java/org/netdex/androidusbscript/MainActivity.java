@@ -1,4 +1,4 @@
-package org.netdex.hidfuzzer;
+package org.netdex.androidusbscript;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Html;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -21,13 +22,13 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.os.HandlerCompat;
 
-import org.netdex.hidfuzzer.gui.ConfirmDialog;
-import org.netdex.hidfuzzer.gui.PromptDialog;
-import org.netdex.hidfuzzer.service.LuaUsbService;
-import org.netdex.hidfuzzer.service.LuaUsbServiceConnection;
-import org.netdex.hidfuzzer.task.AsyncIOBridge;
-import org.netdex.hidfuzzer.task.LuaUsbTask;
-import org.netdex.hidfuzzer.task.LuaUsbTaskFactory;
+import org.netdex.androidusbscript.gui.ConfirmDialog;
+import org.netdex.androidusbscript.gui.PromptDialog;
+import org.netdex.androidusbscript.service.LuaUsbService;
+import org.netdex.androidusbscript.service.LuaUsbServiceConnection;
+import org.netdex.androidusbscript.task.AsyncIOBridge;
+import org.netdex.androidusbscript.task.LuaUsbTask;
+import org.netdex.androidusbscript.task.LuaUsbTaskFactory;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -86,8 +87,7 @@ public class MainActivity extends AppCompatActivity {
         Intent serviceIntent = new Intent(this, LuaUsbService.class);
         activeServiceConn_ =
                 new LuaUsbServiceConnection(task, () -> {
-                    activeServiceConn_ = null;
-                    handler_.post(() -> btnCancel_.setEnabled(false)); // TODO need to unbind...
+                    handler_.post(this::terminateLuaUsbService);
                 });
         bindService(serviceIntent, activeServiceConn_, BIND_AUTO_CREATE);
         btnCancel_.setEnabled(true);
@@ -97,6 +97,7 @@ public class MainActivity extends AppCompatActivity {
         if (activeServiceConn_ != null) {
             btnCancel_.setEnabled(false);
             unbindService(activeServiceConn_); // TODO this can cause ANR
+            activeServiceConn_ = null;
         }
     }
 

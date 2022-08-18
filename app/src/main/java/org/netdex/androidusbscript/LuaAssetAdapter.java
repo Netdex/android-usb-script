@@ -1,4 +1,4 @@
-package org.netdex.hidfuzzer;
+package org.netdex.androidusbscript;
 
 import android.view.LayoutInflater;
 import android.view.View;

@@ -1,10 +1,10 @@
-package org.netdex.hidfuzzer.configfs;
+package org.netdex.androidusbscript.configfs;
 
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
-import org.netdex.hidfuzzer.configfs.function.UsbGadgetFunction;
-import org.netdex.hidfuzzer.util.Command;
+import org.netdex.androidusbscript.configfs.function.UsbGadgetFunction;
+import org.netdex.androidusbscript.util.Command;
 
 import eu.chainfire.libsuperuser.Shell;
 
@@ -60,6 +60,8 @@ public class UsbGadget {
                 Command.echoToFile(params.idVendor, "idVendor"),
                 Command.echoToFile("239", "bDeviceClass"),
                 Command.echoToFile("0x02", "bDeviceSubClass"),
+                // BUG: Unresolved issue with USB 3.0 ports and hubs
+//                Command.echoToFile("super-speed", "max_speed"),
                 Command.echoToFile("0x01", "bDeviceProtocol"),
 
                 "mkdir strings/0x409",

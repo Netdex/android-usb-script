@@ -1,6 +1,6 @@
-package org.netdex.hidfuzzer.configfs.function;
+package org.netdex.androidusbscript.configfs.function;
 
-import org.netdex.hidfuzzer.util.Command;
+import org.netdex.androidusbscript.util.Command;
 
 import java.nio.file.Paths;
 

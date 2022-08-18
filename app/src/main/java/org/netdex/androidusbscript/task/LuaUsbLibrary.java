@@ -1,4 +1,4 @@
-package org.netdex.hidfuzzer.task;
+package org.netdex.androidusbscript.task;
 
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
@@ -10,13 +10,13 @@ import org.luaj.vm2.lib.OneArgFunction;
 import org.luaj.vm2.lib.TwoArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
-import org.netdex.hidfuzzer.configfs.UsbGadget;
-import org.netdex.hidfuzzer.configfs.function.UsbGadgetFunctionHid;
-import org.netdex.hidfuzzer.configfs.function.UsbGadgetFunctionMassStorage;
-import org.netdex.hidfuzzer.function.HidDescriptor;
-import org.netdex.hidfuzzer.function.HidInput;
-import org.netdex.hidfuzzer.function.HidKeyboardInterface;
-import org.netdex.hidfuzzer.function.HidMouseInterface;
+import org.netdex.androidusbscript.configfs.UsbGadget;
+import org.netdex.androidusbscript.configfs.function.UsbGadgetFunctionHid;
+import org.netdex.androidusbscript.configfs.function.UsbGadgetFunctionMassStorage;
+import org.netdex.androidusbscript.function.HidDescriptor;
+import org.netdex.androidusbscript.function.HidInput;
+import org.netdex.androidusbscript.function.HidKeyboardInterface;
+import org.netdex.androidusbscript.function.HidMouseInterface;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -187,12 +187,13 @@ public class LuaUsbLibrary {
                 // MITIGATION: Windows seems to memoize usb configurations by serial number
                 // (not across reboots). This causes undefined behavior when the configuration
                 // changes. Generate a serial number based on the configuration.
+                String serial = usbGadget_.serial();
                 UsbGadget.Parameters gadgetParameters = new UsbGadget.Parameters(
-                        "netdex",
-                        usbGadget_.serial(),
+                        "The Linux Foundation",
+                        serial,
                         "0x1d6b",
-                        "0x104",
-                        "HIDFuzzer",
+                        "0x0105",
+                        "FunctionFS Gadget",
                         "Composite");
                 try {
                     usbGadget_.create(su_, gadgetParameters);

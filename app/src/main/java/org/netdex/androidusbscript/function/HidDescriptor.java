@@ -1,6 +1,6 @@
-package org.netdex.hidfuzzer.function;
+package org.netdex.androidusbscript.function;
 
-import org.netdex.hidfuzzer.configfs.function.UsbGadgetFunctionHid;
+import org.netdex.androidusbscript.configfs.function.UsbGadgetFunctionHid;
 
 public enum HidDescriptor {
     KEYBOARD(new UsbGadgetFunctionHid.Parameters(

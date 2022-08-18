@@ -1,21 +1,18 @@
-package org.netdex.hidfuzzer.service;
+package org.netdex.androidusbscript.service;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
 
-import org.netdex.hidfuzzer.MainActivity;
-import org.netdex.hidfuzzer.R;
-import org.netdex.hidfuzzer.task.LuaUsbTask;
+import org.netdex.androidusbscript.R;
+import org.netdex.androidusbscript.task.LuaUsbTask;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 public class LuaUsbService extends Service {
@@ -81,6 +78,7 @@ public class LuaUsbService extends Service {
             }
         } catch (InterruptedException ignored) {
         }
+        activeTask_.terminate();
         throw new IllegalStateException("Interpreter thread is hung");
     }
 

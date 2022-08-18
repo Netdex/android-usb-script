@@ -1,11 +1,11 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 30
+    compileSdk 33
     defaultConfig {
-        applicationId "org.netdex.hidfuzzer"
+        applicationId "org.netdex.androidusbscript"
         minSdkVersion 26
-        targetSdkVersion 30
+        targetSdkVersion 33
         versionCode 100
         versionName '1.0.0'
     }
@@ -24,12 +24,12 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.core:core:1.3.2'
-    implementation 'com.google.android.material:material:1.2.1'
+    implementation 'androidx.core:core:1.8.0'
+    implementation 'com.google.android.material:material:1.6.1'
 
     implementation 'eu.chainfire:libsuperuser:1.1.0.+'
     implementation 'org.luaj:luaj-jse:3.0.1'
-    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.appcompat:appcompat:1.5.0'
 }
 repositories {
     mavenCentral()

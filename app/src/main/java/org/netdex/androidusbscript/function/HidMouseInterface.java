@@ -1,6 +1,6 @@
-package org.netdex.hidfuzzer.function;
+package org.netdex.androidusbscript.function;
 
-import org.netdex.hidfuzzer.util.Command;
+import org.netdex.androidusbscript.util.Command;
 
 import java.io.IOException;
 import java.util.Arrays;

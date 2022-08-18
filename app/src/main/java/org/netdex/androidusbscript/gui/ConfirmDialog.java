@@ -1,4 +1,4 @@
-package org.netdex.hidfuzzer.gui;
+package org.netdex.androidusbscript.gui;
 
 import android.app.AlertDialog;
 import android.content.Context;

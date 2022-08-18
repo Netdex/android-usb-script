@@ -1,11 +1,10 @@
-package org.netdex.hidfuzzer.service;
+package org.netdex.androidusbscript.service;
 
 import android.content.ComponentName;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 
-import org.netdex.hidfuzzer.MainActivity;
-import org.netdex.hidfuzzer.task.LuaUsbTask;
+import org.netdex.androidusbscript.task.LuaUsbTask;
 
 public class LuaUsbServiceConnection implements ServiceConnection {
 

@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="org.netdex.hidfuzzer">
+    package="org.netdex.androidusbscript">
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
-        android:allowBackup="true"
         android:icon="@mipmap/ic_fuzzer"
         android:label="@string/app_name"
-        android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <activity android:name=".MainActivity">
+        <activity
+            android:name="org.netdex.androidusbscript.MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -20,14 +20,14 @@
         </activity>
 
         <activity
-            android:name=".SelectAssetActivity"
+            android:name="org.netdex.androidusbscript.SelectAssetActivity"
+            android:exported="true"
             android:label="@string/title_activity_select_asset"
-            android:parentActivityName=".MainActivity" />
+            android:parentActivityName="org.netdex.androidusbscript.MainActivity" />
 
         <service
-            android:name=".service.LuaUsbService"
-            android:enabled="true"
-            android:exported="true" />
+            android:name="org.netdex.androidusbscript.service.LuaUsbService"
+            android:enabled="true" />
 
     </application>
 

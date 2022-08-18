@@ -1,9 +1,6 @@
-package org.netdex.hidfuzzer.configfs.function;
+package org.netdex.androidusbscript.configfs.function;
 
-import java.io.IOException;
-import java.util.ArrayList;
-
-import org.netdex.hidfuzzer.util.Command;
+import org.netdex.androidusbscript.util.Command;
 
 import eu.chainfire.libsuperuser.Shell;
 

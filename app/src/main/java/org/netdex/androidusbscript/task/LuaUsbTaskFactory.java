@@ -1,4 +1,4 @@
-package org.netdex.hidfuzzer.task;
+package org.netdex.androidusbscript.task;
 
 /**
  * Created by netdex on 12/28/17.
