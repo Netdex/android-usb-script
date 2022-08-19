@@ -19,14 +19,13 @@ public class LuaUsbTask implements Runnable {
 
     private final String name_;
     private final String src_;
-    private final LuaIOBridge aio_;
-    private final AtomicBoolean cancelled_ = new AtomicBoolean(false);
+    private final LuaIOBridge ioBridge_;
     private Shell.Threaded su_;
 
     public LuaUsbTask(String name, String src, LuaIOBridge ioBridge) {
         this.name_ = name;
         this.src_ = src;
-        this.aio_ = ioBridge;
+        this.ioBridge_ = ioBridge;
     }
 
     @Override
@@ -38,12 +37,13 @@ public class LuaUsbTask implements Runnable {
             usbGadget = new UsbGadget("hidf", "/config");
 
             try {
-                aio_.onLogMessage("<b>-- Started <i>" + name_ + "</i></b>");
+                ioBridge_.onLogMessage("<b>-- Started <i>" + name_ + "</i></b>");
 
                 try {
                     Globals globals = JsePlatform.standardGlobals();
-                    globals.load(new StringReader("package.path = '/assets/scripts/?.lua;'"), "initAndroidPath").call();
-                    LuaUsbLibrary luaUsbLibrary = new LuaUsbLibrary(su_, usbGadget, aio_, cancelled_);
+                    globals.load(new StringReader("package.path = '/assets/scripts/?.lua;'"),
+                            "initAndroidPath").call();
+                    LuaUsbLibrary luaUsbLibrary = new LuaUsbLibrary(su_, usbGadget, ioBridge_);
                     luaUsbLibrary.bind(globals);
                     LuaValue luaChunk_ = globals.load(src_);
                     luaChunk_.call();
@@ -52,12 +52,12 @@ public class LuaUsbTask implements Runnable {
                         throw (Shell.ShellDiedException) e.getCause();
                     } else if (!(e.getCause() instanceof InterruptedException)) {
                         e.printStackTrace();
-                        aio_.onLogMessage("<b>LuaError:</b> " +
+                        ioBridge_.onLogMessage("<b>LuaError:</b> " +
                                 e.getMessage().replace("\n", "<br>"));
                     }
                 }
             } finally {
-                aio_.onLogMessage("<b>-- Ended <i>" + name_ + "</i></b>");
+                ioBridge_.onLogMessage("<b>-- Ended <i>" + name_ + "</i></b>");
 
                 if (usbGadget.isBound(su_)) {
                     usbGadget.unbind(su_);
@@ -68,9 +68,9 @@ public class LuaUsbTask implements Runnable {
             }
         } catch (Shell.ShellDiedException e) {
             if (su_ == null) {
-                aio_.onLogMessage("<b>Could not obtain superuser privileges!</b>");
+                ioBridge_.onLogMessage("<b>Could not obtain superuser privileges!</b>");
             } else {
-                aio_.onLogMessage("<b>SU shell has unexpectedly died!</b>");
+                ioBridge_.onLogMessage("<b>SU shell has unexpectedly died!</b>");
             }
         } finally {
             if (su_ != null) {
@@ -82,15 +82,4 @@ public class LuaUsbTask implements Runnable {
     public String getName() {
         return name_;
     }
-
-    public void setCancelled(boolean cancelled) {
-        cancelled_.set(cancelled);
-    }
-
-    public void terminate() {
-        if (su_.isRunning()) {
-            su_.kill();
-        }
-    }
-
 }

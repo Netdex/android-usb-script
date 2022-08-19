@@ -1,22 +1,28 @@
 package org.netdex.androidusbscript.service;
 
+import static org.netdex.androidusbscript.MainActivity.TAG;
+
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
+import android.util.Log;
 
 import com.topjohnwu.superuser.ipc.RootService;
 
+import org.netdex.androidusbscript.MainActivity;
 import org.netdex.androidusbscript.R;
 import org.netdex.androidusbscript.task.LuaUsbTask;
 
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-
-import static org.netdex.androidusbscript.MainActivity.TAG;
 
 public class LuaUsbService extends Service {
 
@@ -32,73 +38,123 @@ public class LuaUsbService extends Service {
         }
     }
 
-    public interface TaskCompletedCallback {
-        void onTaskCompleted();
+    public static class Result {
+
+    }
+
+    public interface Callback {
+        void onTaskCompleted(LuaUsbTask task);
     }
 
     private static final String CHANNEL_ID = LuaUsbService.class.getName();
     public static final int ONGOING_NOTIFICATION_ID = 1;
 
     private final ExecutorService executorService_ = Executors.newSingleThreadExecutor();
-    private LuaUsbTask activeTask_ = null;
+    private Future<Result> activeTask_ = null;
     private RootServiceConnection rootSvcConn_;
+    private NotificationManager notificationManager_;
+    private Callback callback_;
 
     public LuaUsbService() {
         rootSvcConn_ = new RootServiceConnection();
     }
 
-    public void submit(LuaUsbTask task, TaskCompletedCallback callback) {
-        Notification notification =
-                new Notification.Builder(this, CHANNEL_ID)
-                        .setContentTitle(getText(R.string.service_notif_title))
-                        .setContentText(getString(R.string.service_notif_message, task.getName()))
-                        .setSmallIcon(R.drawable.ic_baseline_usb_24)
-                        .build();
-        startForeground(ONGOING_NOTIFICATION_ID, notification);
-        executorService_.execute(() -> run(task, callback));
+    public boolean submitTask(LuaUsbTask task) {
+        Log.v(TAG, "LuaUsbService.submitTask()");
+        synchronized (this) {
+            if (activeTask_ != null) return false;
+            if (notificationManager_ != null)
+                notificationManager_.notify(ONGOING_NOTIFICATION_ID, getNotification(task));
+            activeTask_ = executorService_.submit(() -> run(task));
+        }
+        return true;
     }
 
-    public void run(LuaUsbTask task, TaskCompletedCallback callback) {
-        if (activeTask_ != null)
-            throw new IllegalStateException("Previous task did not terminate");
-        activeTask_ = task;
+    public void setCallback(Callback callback) {
+        callback_ = callback;
+    }
+
+    public boolean stopActiveTask() {
+        Log.v(TAG, "LuaUsbService.stopActiveTask()");
+        synchronized (this) {
+            if (activeTask_ == null) return false;
+            activeTask_.cancel(true);
+        }
+        return true;
+    }
+
+    private Result run(LuaUsbTask task) {
         task.run();
-        activeTask_ = null;
-        callback.onTaskCompleted();
+        synchronized (this) {
+            activeTask_ = null;
+        }
+        onTaskCompleted(task);
+        return new Result();
+    }
+
+    private void onTaskCompleted(LuaUsbTask task) {
+        Log.v(TAG, "LuaUsbService.onTaskCompleted()");
+        if (notificationManager_ != null)
+            notificationManager_.notify(ONGOING_NOTIFICATION_ID, getNotification(null));
+        callback_.onTaskCompleted(task);
     }
 
     @Override
     public IBinder onBind(Intent intent) {
+        Log.v(TAG, "LuaUsbService.onCreate()");
         return new Binder(this);
     }
 
     @Override
     public boolean onUnbind(Intent intent) {
-        if (activeTask_ != null) activeTask_.setCancelled(true);
-        executorService_.shutdownNow();
-        try {
-            if (executorService_.awaitTermination(5, TimeUnit.SECONDS)) {
-                return false;
-            }
-        } catch (InterruptedException ignored) {
-        }
-        activeTask_.terminate();
-        throw new IllegalStateException("Interpreter thread is hung");
+        Log.v(TAG, "LuaUsbService.onUnbind()");
+        return false;
     }
 
     @Override
     public void onCreate() {
+        Log.v(TAG, "LuaUsbService.onCreate()");
         Intent intent = new Intent(this, RootFileSystemService.class);
         RootService.bind(intent, rootSvcConn_);
 
         createNotificationChannel();
+        startForeground(ONGOING_NOTIFICATION_ID, getNotification(null));
     }
 
     @Override
     public void onDestroy() {
+        Log.v(TAG, "LuaUsbService.onDestroy()");
+        notificationManager_ = null;
         if (rootSvcConn_ != null) {
             RootService.unbind(rootSvcConn_);
+            rootSvcConn_ = null;
         }
+        executorService_.shutdownNow();
+        try {
+            if (!executorService_.awaitTermination(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Lua interpreter thread hang");
+            }
+        } catch (InterruptedException ignored) {
+            throw new IllegalStateException("Executor shutdown was interrupted");
+        }
+    }
+
+    private Notification getNotification(LuaUsbTask task) {
+        String contextText;
+        if (task == null) {
+            contextText = getString(R.string.service_notif_message_idle);
+        } else {
+            contextText = getString(R.string.service_notif_message, task.getName());
+        }
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this, 0, new Intent(this, MainActivity.class),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        return new Notification.Builder(this, CHANNEL_ID)
+                .setContentTitle(getText(R.string.service_notif_title))
+                .setContentText(contextText)
+                .setSmallIcon(R.drawable.ic_baseline_usb_24)
+                .setContentIntent(pendingIntent)
+                .build();
     }
 
     private void createNotificationChannel() {
@@ -109,7 +165,7 @@ public class LuaUsbService extends Service {
         channel.setDescription(description);
         // Register the channel with the system; you can't change the importance
         // or other notification behaviors after this
-        NotificationManager notificationManager = getSystemService(NotificationManager.class);
-        notificationManager.createNotificationChannel(channel);
+        notificationManager_ = getSystemService(NotificationManager.class);
+        notificationManager_.createNotificationChannel(channel);
     }
 }

@@ -32,13 +32,11 @@ public class LuaUsbLibrary {
     private final Shell.Threaded su_;
     private final UsbGadget usbGadget_;
     private final LuaIOBridge aio_;
-    private final AtomicBoolean cancelled_;
 
-    public LuaUsbLibrary(Shell.Threaded su, UsbGadget usbGadget, LuaIOBridge aio, AtomicBoolean cancelled) {
+    public LuaUsbLibrary(Shell.Threaded su, UsbGadget usbGadget, LuaIOBridge aio) {
         this.aio_ = aio;
         this.su_ = su;
         this.usbGadget_ = usbGadget;
-        this.cancelled_ = cancelled;
     }
 
     public void bind(Globals globals) {
@@ -63,7 +61,6 @@ public class LuaUsbLibrary {
         public LuaValue call(LuaValue arg) {
             long d = arg.checklong();
             try {
-                if (cancelled_.get()) throw new InterruptedException();
                 Thread.sleep(d);
             } catch (InterruptedException e) {
                 throw new LuaError(e);
@@ -73,7 +70,6 @@ public class LuaUsbLibrary {
     }
 
     class print extends OneArgFunction {
-
         @Override
         public LuaValue call(LuaValue arg) {
             String msg = arg.tojstring();

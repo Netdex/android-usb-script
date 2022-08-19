@@ -1,11 +1,12 @@
 <resources>
-    <string name="app_name">android-usb-script</string>
+    <string name="app_name">Android USB Script</string>
     <string name="disabled">Disabled</string>
     <string name="enabled">Enabled</string>
     <string name="task">Task</string>
     <string name="log_content">Log Content</string>
-    <string name="service_notif_title">android-usb-script</string>
-    <string name="service_notif_message">Lua script \"%1$s\" is running</string>
+    <string name="service_notif_title">Android USB script interpreter</string>
+    <string name="service_notif_message">Lua script \"%1$s\" is active</string>
+    <string name="service_notif_message_idle">No scripts are currently active</string>
     <string name="notif_channel_name">Service</string>
     <string name="notif_channel_description">android-usb-script service channel</string>
     <string name="title_activity_select_asset">ScrollingActivity</string>

@@ -7,23 +7,22 @@ import android.os.IBinder;
 import org.netdex.androidusbscript.task.LuaUsbTask;
 
 public class LuaUsbServiceConnection implements ServiceConnection {
+    private LuaUsbService service_;
 
-    private LuaUsbTask task_;
-    private LuaUsbService.TaskCompletedCallback callback_;
-
-    public LuaUsbServiceConnection(LuaUsbTask task, LuaUsbService.TaskCompletedCallback callback) {
-        this.task_ = task;
-        this.callback_ = callback;
+    public LuaUsbServiceConnection() {
     }
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder binder) {
-        LuaUsbService service = ((LuaUsbService.Binder) binder).getService();
-        service.submit(task_, callback_);
+        service_ = ((LuaUsbService.Binder) binder).getService();
     }
 
     @Override
     public void onServiceDisconnected(ComponentName name) {
 
+    }
+
+    public LuaUsbService getService(){
+        return service_;
     }
 }

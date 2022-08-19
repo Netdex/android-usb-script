@@ -1,10 +1,12 @@
 package org.netdex.androidusbscript;
 
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
 import android.text.Html;
 import android.view.Menu;
@@ -34,7 +36,8 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = "android-usb-script";
 
-    private LuaUsbServiceConnection activeServiceConn_;
+    private LuaUsbServiceConnection luaUsbSvcConn_;
+    private LuaUsbService luaUsbSvc_;
     private LuaUsbTaskFactory luaUsbTaskFactory_;
     private Handler handler_;
 
@@ -73,31 +76,40 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
+        btnCancel_.setOnClickListener(v -> stopActiveTask());
+
         luaUsbTaskFactory_ = new LuaUsbTaskFactory(dialogIO);
 
-        btnCancel_.setOnClickListener(v -> terminateLuaUsbService());
-    }
-
-    public void createLuaUsbService(LuaUsbTask task) {
-        if (activeServiceConn_ != null) {
-            Toast.makeText(this, "A task is already running", Toast.LENGTH_SHORT).show();
-            return;
-        }
         Intent serviceIntent = new Intent(this, LuaUsbService.class);
-        activeServiceConn_ =
-                new LuaUsbServiceConnection(task, () -> {
-                    handler_.post(this::terminateLuaUsbService);
-                });
-        bindService(serviceIntent, activeServiceConn_, BIND_AUTO_CREATE);
-        btnCancel_.setEnabled(true);
+        luaUsbSvcConn_ = new LuaUsbServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder binder) {
+                super.onServiceConnected(name, binder);
+                luaUsbSvc_ = luaUsbSvcConn_.getService();
+                LuaUsbService.Callback callback = new LuaUsbService.Callback() {
+                    @Override
+                    public void onTaskCompleted(LuaUsbTask task) {
+                        handler_.post(() -> {
+                            btnCancel_.setEnabled(false);
+                        });
+                    }
+                };
+                luaUsbSvc_.setCallback(callback);
+            }
+        };
+        bindService(serviceIntent, luaUsbSvcConn_, BIND_AUTO_CREATE);
     }
 
-    public void terminateLuaUsbService() {
-        if (activeServiceConn_ != null) {
-            btnCancel_.setEnabled(false);
-            unbindService(activeServiceConn_); // TODO this can cause ANR
-            activeServiceConn_ = null;
+    public void submitTask(LuaUsbTask task) {
+        if (luaUsbSvc_.submitTask(task)) {
+            btnCancel_.setEnabled(true);
+        } else {
+            Toast.makeText(this, "A task is already running", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    public void stopActiveTask() {
+        luaUsbSvc_.stopActiveTask();
     }
 
     @Override
@@ -145,12 +157,12 @@ public class MainActivity extends AppCompatActivity {
             case PICK_LUA_ASSET:
                 String name = data.getStringExtra("name");
                 String path = data.getStringExtra("path");
-                createLuaUsbService(luaUsbTaskFactory_.createTaskFromLuaAsset(
+                submitTask(luaUsbTaskFactory_.createTaskFromLuaAsset(
                         MainActivity.this, name, path));
                 break;
             case PICK_LUA_SCRIPT:
                 Uri uri = data.getData();
-                createLuaUsbService(luaUsbTaskFactory_.createTaskFromLuaScript(
+                submitTask(luaUsbTaskFactory_.createTaskFromLuaScript(
                         MainActivity.this, uri.getLastPathSegment(), uri));
                 break;
         }
