@@ -14,9 +14,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 
 public class LuaUsbTaskFactory {
-    private AsyncIOBridge dialogIO_;
+    private LuaIOBridge dialogIO_;
 
-    public LuaUsbTaskFactory(AsyncIOBridge dialogIO) {
+    public LuaUsbTaskFactory(LuaIOBridge dialogIO) {
         this.dialogIO_ = dialogIO;
     }
 

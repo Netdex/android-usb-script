@@ -31,17 +31,17 @@ public class LuaUsbLibrary {
 
     private final Shell.Threaded su_;
     private final UsbGadget usbGadget_;
-    private final AsyncIOBridge aio_;
+    private final LuaIOBridge aio_;
     private final AtomicBoolean cancelled_;
 
-    public LuaUsbLibrary(Shell.Threaded su, UsbGadget usbGadget, AsyncIOBridge aio, AtomicBoolean cancelled) {
+    public LuaUsbLibrary(Shell.Threaded su, UsbGadget usbGadget, LuaIOBridge aio, AtomicBoolean cancelled) {
         this.aio_ = aio;
         this.su_ = su;
         this.usbGadget_ = usbGadget;
         this.cancelled_ = cancelled;
     }
 
-    public void bind(Globals globals){
+    public void bind(Globals globals) {
         LuaFunction library = new luausb();
         globals.set(library.name(), library.call());
         for (LuaFunction f : new LuaFunction[]{new wait(), new print(), new confirm(), new prompt()}) {
@@ -111,6 +111,7 @@ public class LuaUsbLibrary {
         public LuaValue call() {
             LuaValue library = tableOf();
             library.set("create", new create());
+            library.set("state", new state());
             return library;
         }
 
@@ -128,7 +129,7 @@ public class LuaUsbLibrary {
              *             id: integer = [n >= 0]
              *             <p>
              *             Depending on type, the configuration can have additional properties:
-             *             TODO
+             *                         TODO
              * @return A library binding for interacting with the created gadgets.
              * The binding is a table with at least the following properties:
              * <p>
@@ -138,13 +139,9 @@ public class LuaUsbLibrary {
              */
             @Override
             public Varargs invoke(Varargs args) {
-                LuaTable library = tableOf();
-                for (LuaFunction f : new LuaFunction[]{new state()}) {
-                    library.set(f.name(), f);
-                }
-
-                LuaTable dev = tableOf();
-                for (int i = 1; i <= args.narg(); ++i) {
+                int numDevices = args.narg();
+                LuaValue[] devices = new LuaValue[numDevices];
+                for (int i = 1; i <= numDevices; ++i) {
                     LuaTable config = args.arg(i).checktable();
                     String type = config.get("type").checkjstring();
                     int id = config.get("id").checkint();
@@ -181,7 +178,7 @@ public class LuaUsbLibrary {
                         default:
                             throw new LuaError(String.format("Invalid function type \"%s\"", type));
                     }
-                    dev.set(i, device);
+                    devices[i - 1] = device;
                 }
 
                 // MITIGATION: Windows seems to memoize usb configurations by serial number
@@ -201,8 +198,7 @@ public class LuaUsbLibrary {
                 } catch (Shell.ShellDiedException e) {
                     throw new LuaError(e);
                 }
-                library.set("dev", dev);
-                return library;
+                return LuaValue.varargsOf(devices);
             }
         }
 

@@ -5,8 +5,9 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
-import android.os.Build;
 import android.os.IBinder;
+
+import com.topjohnwu.superuser.ipc.RootService;
 
 import org.netdex.androidusbscript.R;
 import org.netdex.androidusbscript.task.LuaUsbTask;
@@ -14,6 +15,8 @@ import org.netdex.androidusbscript.task.LuaUsbTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import static org.netdex.androidusbscript.MainActivity.TAG;
 
 public class LuaUsbService extends Service {
 
@@ -38,9 +41,10 @@ public class LuaUsbService extends Service {
 
     private final ExecutorService executorService_ = Executors.newSingleThreadExecutor();
     private LuaUsbTask activeTask_ = null;
+    private RootServiceConnection rootSvcConn_;
 
     public LuaUsbService() {
-
+        rootSvcConn_ = new RootServiceConnection();
     }
 
     public void submit(LuaUsbTask task, TaskCompletedCallback callback) {
@@ -84,26 +88,28 @@ public class LuaUsbService extends Service {
 
     @Override
     public void onCreate() {
+        Intent intent = new Intent(this, RootFileSystemService.class);
+        RootService.bind(intent, rootSvcConn_);
+
         createNotificationChannel();
     }
 
     @Override
     public void onDestroy() {
+        if (rootSvcConn_ != null) {
+            RootService.unbind(rootSvcConn_);
+        }
     }
 
     private void createNotificationChannel() {
-        // Create the NotificationChannel, but only on API 26+ because
-        // the NotificationChannel class is new and not in the support library
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = getString(R.string.notif_channel_name);
-            String description = getString(R.string.notif_channel_description);
-            int importance = NotificationManager.IMPORTANCE_LOW;
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-            channel.setDescription(description);
-            // Register the channel with the system; you can't change the importance
-            // or other notification behaviors after this
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-        }
+        CharSequence name = getString(R.string.notif_channel_name);
+        String description = getString(R.string.notif_channel_description);
+        int importance = NotificationManager.IMPORTANCE_LOW;
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+        channel.setDescription(description);
+        // Register the channel with the system; you can't change the importance
+        // or other notification behaviors after this
+        NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        notificationManager.createNotificationChannel(channel);
     }
 }

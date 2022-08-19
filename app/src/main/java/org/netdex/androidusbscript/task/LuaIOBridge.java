@@ -4,7 +4,7 @@ package org.netdex.androidusbscript.task;
  * Created by netdex on 12/30/17.
  */
 
-public interface AsyncIOBridge {
+public interface LuaIOBridge {
     void onLogMessage(String s);
 
     boolean onConfirm(String title, String prompt);

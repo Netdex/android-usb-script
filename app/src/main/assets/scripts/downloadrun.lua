@@ -3,8 +3,7 @@
 --- directly translated from the Java version in previous builds
 ---
 
-usb = luausb.create({ id = 0, type = "keyboard" })
-kb = usb.dev[1]
+kb = luausb.create({ id = 0, type = "keyboard" })
 
 local file = prompt("File to download?", "https://github.com/Netdex/FlyingCursors/releases/download/1.0.0/FlyingCursors.exe")
 local runAs = confirm("Task UAC", "Launch exe as admin?");
@@ -13,7 +12,7 @@ while true do
     print("idle")
 
     -- poll until usb plugged in
-    while usb.state() == "not attached" do
+    while luausb.state() == "not attached" do
         wait(1000)
     end
 
@@ -52,7 +51,7 @@ while true do
 
     print("done")
     -- poll until usb unplugged
-    while usb.state() == "configured" do
+    while luausb.state() == "configured" do
         wait(1000)
     end
     print("disconnected")

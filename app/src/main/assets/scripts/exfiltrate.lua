@@ -2,8 +2,7 @@
 --- Copy a file from the system to a mass storage gadget
 --- https://docs.hak5.org/hak5-usb-rubber-ducky/advanced-features/exfiltration
 ---
-usb = luausb.create({ id = 0, type = "keyboard"}, {id = 0, type = "storage" })
-kb = usb.dev[1]
+kb = luausb.create({ id = 0, type = "keyboard"}, {id = 0, type = "storage" })
 
 local LABEL = "COMPOSITE" -- label of the drive (as assigned by you)
 
@@ -11,7 +10,7 @@ while true do
     print("idle")
 
     -- poll until usb plugged in
-    while usb.state() == "not attached" do
+    while luausb.state() == "not attached" do
         wait(1000)
     end
 
@@ -28,7 +27,7 @@ while true do
 
     print("done")
     -- poll until usb unplugged
-    while usb.state() == "configured" do
+    while luausb.state() == "configured" do
         wait(1000)
     end
     print("disconnected")

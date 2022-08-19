@@ -1,5 +1,4 @@
-usb = luausb.create({ id = 0, type = "keyboard" })
-kb = usb.dev[1]
+kb = luausb.create({ id = 0, type = "keyboard" })
 
 while true do
     wait(1000)

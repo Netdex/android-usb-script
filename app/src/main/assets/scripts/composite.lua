@@ -2,15 +2,13 @@
 --- Composite device composed of two keyboards
 ---
 ---
-usb = luausb.create({ type = "keyboard", id = 0 }, { type = "keyboard", id = 1 })
-kb1 = usb.dev[1]
-kb2 = usb.dev[2]
+kb1, kb2 = luausb.create({ type = "keyboard", id = 0 }, { type = "keyboard", id = 1 })
 
 while true do
     print("idle")
 
     -- poll until usb plugged in
-    while usb.state() == "not attached" do
+    while luausb.state() == "not attached" do
         wait(1000)
     end
 
@@ -26,7 +24,7 @@ while true do
     print("done")
 
     -- poll until usb unplugged
-    while usb.state() == "configured" do
+    while luausb.state() == "configured" do
         wait(1000)
     end
 

@@ -6,6 +6,7 @@ import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.lib.jse.JsePlatform;
 import org.netdex.androidusbscript.configfs.UsbGadget;
 
+import java.io.StringReader;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import eu.chainfire.libsuperuser.Shell;
@@ -18,11 +19,11 @@ public class LuaUsbTask implements Runnable {
 
     private final String name_;
     private final String src_;
-    private final AsyncIOBridge aio_;
+    private final LuaIOBridge aio_;
     private final AtomicBoolean cancelled_ = new AtomicBoolean(false);
     private Shell.Threaded su_;
 
-    public LuaUsbTask(String name, String src, AsyncIOBridge ioBridge) {
+    public LuaUsbTask(String name, String src, LuaIOBridge ioBridge) {
         this.name_ = name;
         this.src_ = src;
         this.aio_ = ioBridge;
@@ -41,6 +42,7 @@ public class LuaUsbTask implements Runnable {
 
                 try {
                     Globals globals = JsePlatform.standardGlobals();
+                    globals.load(new StringReader("package.path = '/assets/scripts/?.lua;'"), "initAndroidPath").call();
                     LuaUsbLibrary luaUsbLibrary = new LuaUsbLibrary(su_, usbGadget, aio_, cancelled_);
                     luaUsbLibrary.bind(globals);
                     LuaValue luaChunk_ = globals.load(src_);

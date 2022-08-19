@@ -2,8 +2,7 @@
 --- wallpaper.lua: Changes a Windows 10 desktop wallpaper
 ---
 
-usb = luausb.create({ id = 0, type = "keyboard" })
-kb = usb.dev[1]
+kb = luausb.create({ id = 0, type = "keyboard" })
 
 local file = prompt("Wallpaper to download?", "https://i.imgur.com/46wWHZ3.png")
 
@@ -11,7 +10,7 @@ while true do
     print("idle")
 
     -- poll until usb plugged in
-    while usb.state() == "not attached" do
+    while luausb.state() == "not attached" do
         wait(1000)
     end
 
@@ -37,7 +36,7 @@ while true do
 
     print("done")
     -- poll until usb unplugged
-    while usb.state() == "configured" do
+    while luausb.state() == "configured" do
         wait(1000)
     end
 end

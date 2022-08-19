@@ -7,7 +7,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Html;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -26,14 +25,14 @@ import org.netdex.androidusbscript.gui.ConfirmDialog;
 import org.netdex.androidusbscript.gui.PromptDialog;
 import org.netdex.androidusbscript.service.LuaUsbService;
 import org.netdex.androidusbscript.service.LuaUsbServiceConnection;
-import org.netdex.androidusbscript.task.AsyncIOBridge;
+import org.netdex.androidusbscript.task.LuaIOBridge;
 import org.netdex.androidusbscript.task.LuaUsbTask;
 import org.netdex.androidusbscript.task.LuaUsbTaskFactory;
 
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final String TAG = "hidfuzzer";
+    public static final String TAG = "android-usb-script";
 
     private LuaUsbServiceConnection activeServiceConn_;
     private LuaUsbTaskFactory luaUsbTaskFactory_;
@@ -51,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
         TextView logView = findViewById(R.id.text_log);
         ScrollView scrollView = findViewById(R.id.scrollview);
 
-        AsyncIOBridge dialogIO = new AsyncIOBridge() {
+        LuaIOBridge dialogIO = new LuaIOBridge() {
             @Override
             public void onLogMessage(String s) {
                 handler_.post(() -> {

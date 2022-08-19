@@ -7,6 +7,8 @@ with arbitrary composite USB devices.
 
 **Root access is required.**
 
+**Lua scripts are run as root**. Do not run untrusted scripts!
+
 ## Demonstration
 
 The best way to explain what this app does is with a code example. The following script

