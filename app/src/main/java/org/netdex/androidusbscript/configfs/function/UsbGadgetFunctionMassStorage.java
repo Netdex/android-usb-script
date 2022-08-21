@@ -1,8 +1,12 @@
 package org.netdex.androidusbscript.configfs.function;
 
-import org.netdex.androidusbscript.util.Command;
+import com.topjohnwu.superuser.Shell;
 
-import eu.chainfire.libsuperuser.Shell;
+import org.netdex.androidusbscript.util.FileSystem;
+
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.Locale;
 
 /**
  * https://www.kernel.org/doc/Documentation/usb/mass-storage.txt
@@ -46,40 +50,35 @@ public class UsbGadgetFunctionMassStorage extends UsbGadgetFunction {
     }
 
     @Override
-    public void create(Shell.Threaded su, String gadgetPath) throws Shell.ShellDiedException {
-        super.create(su, gadgetPath);
+    public void create(FileSystem fs, String gadgetPath) throws IOException {
+        super.create(fs, gadgetPath);
 
         Parameters params = (Parameters) this.params_;
         String functionDir = getFunctionDir();
 
-        int exitCode;
-        if (!Command.pathExists(su, params.file)) {
+        if (!fs.exists(params.file)) {
             // TODO: This is kind of dangerous, we should probably drop privileges for this
-            exitCode = su.run(String.format("dd bs=1048576 count=%d if=/dev/zero of=\"%s\"",
-                    params.size, params.file));
-            if (exitCode != 0) {
+            Shell.Result result = Shell.cmd(
+                    String.format(Locale.US,
+                            "dd bs=1048576 count=%d if=/dev/zero of=\"%s\"",
+                            params.size, params.file)).exec();
+            if (!result.isSuccess()) {
                 throw new IllegalArgumentException(
-                        String.format("Failed to create image \"%s\"", params.file));
+                        String.format("Failed to create image \"%s\": errno=%d", params.file, result.getCode()));
             }
         }
-        su.run(Command.echoToFile(params.stall ? 1 : 0,
-                String.format("functions/%s/stall", functionDir)));
+        fs.fwrite(params.stall ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, "stall").toString());
 
         final String lunName = "lun.0";
-        su.run(Command.echoToFile(params.file,
-                String.format("functions/%s/%s/file", functionDir, lunName)));
-        su.run(Command.echoToFile(params.ro ? 1 : 0,
-                String.format("functions/%s/%s/ro", functionDir, lunName)));
-        su.run(Command.echoToFile(params.removable ? 1 : 0,
-                String.format("functions/%s/%s/removable", functionDir, lunName)));
-        su.run(Command.echoToFile(params.cdrom ? 1 : 0,
-                String.format("functions/%s/%s/cdrom", functionDir, lunName)));
-        su.run(Command.echoToFile(params.nofua ? 1 : 0,
-                String.format("functions/%s/%s/nofua", functionDir, lunName)));
+        fs.fwrite(params.file, Paths.get(gadgetPath, "functions", functionDir, lunName, "file").toString());
+        fs.fwrite(params.ro ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, lunName, "ro").toString());
+        fs.fwrite(params.removable ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, lunName, "removable").toString());
+        fs.fwrite(params.cdrom ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, lunName, "cdrom").toString());
+        fs.fwrite(params.nofua ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, lunName, "nofua").toString());
     }
 
     @Override
     public String getFunctionDir() {
-        return String.format("mass_storage.usb%d", this.id_);
+        return "mass_storage.usb" + this.id_;
     }
 }

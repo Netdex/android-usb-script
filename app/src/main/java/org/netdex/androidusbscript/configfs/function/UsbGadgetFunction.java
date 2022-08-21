@@ -1,10 +1,9 @@
 package org.netdex.androidusbscript.configfs.function;
 
-import org.netdex.androidusbscript.util.Command;
+import org.netdex.androidusbscript.util.FileSystem;
 
+import java.io.IOException;
 import java.nio.file.Paths;
-
-import eu.chainfire.libsuperuser.Shell;
 
 /**
  * https://www.kernel.org/doc/Documentation/usb/gadget_configfs.txt
@@ -27,64 +26,52 @@ public abstract class UsbGadgetFunction {
      * Code to be called for the function when the ConfigFS structure is being
      * created for the USB gadget
      *
-     * @param su Instance of SU shell
+     * @param fs Remote FileSystem wrapper
      */
-    public void create(Shell.Threaded su, String gadgetPath) throws Shell.ShellDiedException {
+    public void add(FileSystem fs, String gadgetPath, String configDir) throws IOException {
+        this.create(fs, gadgetPath);
+        this.configure(fs, gadgetPath, configDir);
+    }
+
+    protected void create(FileSystem fs, String gadgetPath) throws IOException {
         String functionDir = getFunctionDir();
         String functionPath = Paths.get(gadgetPath, "functions", functionDir).toString();
-        if (Command.pathExists(su, functionPath)) {
+        if (fs.exists(functionPath)) {
             throw new IllegalStateException(String.format("Function path \"%s\" already exists", functionPath));
         }
-        int exitCode = su.run(new String[]{
-                String.format("cd \"%s\"", gadgetPath),
-                String.format("mkdir \"%s\"", functionPath),
-        });
-        if (exitCode != 0)
-            throw new RuntimeException(String.format("Failed to create function \"%s\": errno=%d", functionDir, exitCode));
+        fs.mkdir(functionPath);
     }
 
-    public void bind(Shell.Threaded su, String gadgetPath, String configDir) throws Shell.ShellDiedException {
+    protected void configure(FileSystem fs, String gadgetPath, String configDir) throws IOException {
         String functionDir = getFunctionDir();
         String functionPath = Paths.get(gadgetPath, "functions", functionDir).toString();
-        if (!Command.pathExists(su, functionPath)) {
+        if (!fs.exists(functionPath)) {
             throw new IllegalStateException(String.format("Function path \"%s\" does not exist", functionPath));
         }
-
-        int exitCode = su.run(new String[]{
-                String.format("cd \"%s\"", gadgetPath),
-                String.format("ln -s \"%s\" \"configs/%s\"", functionPath, configDir),
-        });
-        if (exitCode != 0)
-            throw new RuntimeException(String.format("Failed to bind function \"%s\": errno=%d", functionDir, exitCode));
+        fs.ln(Paths.get(gadgetPath, "configs", configDir, functionDir).toString(), functionPath);
     }
 
-    public void unbind(Shell.Threaded su, String gadgetPath, String configDir) throws Shell.ShellDiedException {
+    public void remove(FileSystem fs, String gadgetPath, String configDir) throws IOException {
+        this.unconfigure(fs, gadgetPath, configDir);
+        this.destroy(fs, gadgetPath);
+    }
+
+    protected void destroy(FileSystem fs, String gadgetPath) throws IOException {
+        String functionDir = getFunctionDir();
+        String functionPath = Paths.get(gadgetPath, "functions", functionDir).toString();
+        if (!fs.exists(functionPath)) {
+            throw new IllegalStateException(String.format("Function path \"%s\" does not exist", functionPath));
+        }
+        fs.delete(functionPath);
+    }
+
+    protected void unconfigure(FileSystem fs, String gadgetPath, String configDir) throws IOException {
         String functionDir = getFunctionDir();
         String linkPath = Paths.get(gadgetPath, "configs", configDir, functionDir).toString();
-        if (!Command.pathExists(su, linkPath)) {
+        if (!fs.exists(linkPath)) {
             throw new IllegalStateException(String.format("Function symlink \"%s\" does not exist", linkPath));
         }
-
-        int exitCode = su.run(new String[]{
-                String.format("cd \"%s\"", gadgetPath),
-                String.format("rm \"%s\"", linkPath),
-        });
-        if (exitCode != 0)
-            throw new RuntimeException(String.format("Failed to unbind function \"%s\": errno=%d", functionDir, exitCode));
-    }
-
-    public void remove(Shell.Threaded su, String gadgetPath) throws Shell.ShellDiedException {
-        String functionDir = getFunctionDir();
-        String functionPath = Paths.get(gadgetPath, "functions", functionDir).toString();
-        if (!Command.pathExists(su, functionPath)) {
-            throw new IllegalStateException(String.format("Function path \"%s\" does not exist", functionPath));
-        }
-
-        int exitCode = su.run(new String[]{
-                String.format("rmdir \"%s\"", functionPath),
-        });
-        if (exitCode != 0)
-            throw new RuntimeException(String.format("Failed to remove function \"%s\": errno=%d", functionDir, exitCode));
+        fs.delete(linkPath);
     }
 
     public abstract String getFunctionDir();

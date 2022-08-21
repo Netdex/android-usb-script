@@ -1,5 +1,9 @@
 package org.netdex.androidusbscript.task;
 
+import static org.netdex.androidusbscript.MainActivity.TAG;
+
+import android.util.Log;
+
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaFunction;
@@ -17,25 +21,27 @@ import org.netdex.androidusbscript.function.HidDescriptor;
 import org.netdex.androidusbscript.function.HidInput;
 import org.netdex.androidusbscript.function.HidKeyboardInterface;
 import org.netdex.androidusbscript.function.HidMouseInterface;
+import org.netdex.androidusbscript.util.FileSystem;
 
+import java.io.Closeable;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.ArrayList;
+import java.util.List;
 
-import eu.chainfire.libsuperuser.Shell;
 
 /**
  * Created by netdex on 12/28/17.
  */
 
-public class LuaUsbLibrary {
-
-    private final Shell.Threaded su_;
+public class LuaUsbLibrary implements AutoCloseable {
+    private final FileSystem fs_;
     private final UsbGadget usbGadget_;
     private final LuaIOBridge aio_;
+    private List<Closeable> devHandles_ = new ArrayList<>();
 
-    public LuaUsbLibrary(Shell.Threaded su, UsbGadget usbGadget, LuaIOBridge aio) {
+    public LuaUsbLibrary(FileSystem fs, UsbGadget usbGadget, LuaIOBridge aio) {
+        this.fs_ = fs;
         this.aio_ = aio;
-        this.su_ = su;
         this.usbGadget_ = usbGadget;
     }
 
@@ -53,6 +59,14 @@ public class LuaUsbLibrary {
         }
         for (HidInput.Mouse.Button imb : HidInput.Mouse.Button.values()) {
             globals.set(imb.name(), imb.code);
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        Log.v(TAG, "LuaUsbLibrary.close()");
+        for (Closeable hndl : devHandles_) {
+            hndl.close();
         }
     }
 
@@ -125,7 +139,6 @@ public class LuaUsbLibrary {
              *             id: integer = [n >= 0]
              *             <p>
              *             Depending on type, the configuration can have additional properties:
-             *                         TODO
              * @return A library binding for interacting with the created gadgets.
              * The binding is a table with at least the following properties:
              * <p>
@@ -189,11 +202,12 @@ public class LuaUsbLibrary {
                         "FunctionFS Gadget",
                         "Composite");
                 try {
-                    usbGadget_.create(su_, gadgetParameters);
-                    usbGadget_.bind(su_);
-                } catch (Shell.ShellDiedException e) {
+                    usbGadget_.add(fs_, gadgetParameters);
+                    usbGadget_.bind(fs_);
+                } catch (IOException e) {
                     throw new LuaError(e);
                 }
+
                 return LuaValue.varargsOf(devices);
             }
         }
@@ -202,8 +216,8 @@ public class LuaUsbLibrary {
             @Override
             public LuaValue call() {
                 try {
-                    return valueOf(UsbGadget.getUDCState(su_, UsbGadget.getSystemUDC(su_)));
-                } catch (Shell.ShellDiedException e) {
+                    return valueOf(UsbGadget.getUDCState(fs_, UsbGadget.getSystemUDC(fs_)));
+                } catch (IOException e) {
                     throw new LuaError(e);
                 }
             }
@@ -213,8 +227,13 @@ public class LuaUsbLibrary {
             private final HidKeyboardInterface hid_;
 
             public keyboard(int id) {
-                String devicePath = String.format("/dev/hidg%d", id);
-                this.hid_ = new HidKeyboardInterface(su_, devicePath);
+                String devicePath = "/dev/hidg" + id;
+                try {
+                    this.hid_ = new HidKeyboardInterface(fs_, devicePath);
+                    devHandles_.add(this.hid_);
+                } catch (IOException e) {
+                    throw new LuaError(e);
+                }
             }
 
             @Override
@@ -236,7 +255,7 @@ public class LuaUsbLibrary {
                     }
                     try {
                         hid_.sendKeyboard(a);
-                    } catch (Shell.ShellDiedException | IOException e) {
+                    } catch (IOException e) {
                         throw new LuaError(e);
                     }
                     return NONE;
@@ -266,7 +285,7 @@ public class LuaUsbLibrary {
                     }
                     try {
                         hid_.pressKeys(a);
-                    } catch (Shell.ShellDiedException | IOException e) {
+                    } catch (IOException e) {
                         throw new LuaError(e);
                     }
                     return NONE;
@@ -283,7 +302,7 @@ public class LuaUsbLibrary {
                     }
                     try {
                         hid_.pressKeys(a);
-                    } catch (Shell.ShellDiedException | IOException e) {
+                    } catch (IOException e) {
                         throw new LuaError(e);
                     }
                     return NONE;
@@ -299,7 +318,7 @@ public class LuaUsbLibrary {
                     long delay = arg2.optlong(0);
                     try {
                         hid_.sendKeyboard(string, delay);
-                    } catch (Shell.ShellDiedException | IOException | InterruptedException e) {
+                    } catch (IOException | InterruptedException e) {
                         throw new LuaError(e);
                     }
                     return NIL;
@@ -312,8 +331,13 @@ public class LuaUsbLibrary {
             private final HidMouseInterface hid_;
 
             public mouse(int id) {
-                String devicePath = String.format("/dev/hidg%d", id);
-                this.hid_ = new HidMouseInterface(su_, devicePath);
+                String devicePath = "/dev/hidg" + id;
+                try {
+                    this.hid_ = new HidMouseInterface(fs_, devicePath);
+                    devHandles_.add(this.hid_);
+                } catch (IOException e) {
+                    throw new LuaError(e);
+                }
             }
 
             @Override
@@ -335,7 +359,7 @@ public class LuaUsbLibrary {
                     }
                     try {
                         hid_.sendMouse(a);
-                    } catch (Shell.ShellDiedException | IOException e) {
+                    } catch (IOException e) {
                         throw new LuaError(e);
                     }
                     return NONE;
@@ -350,7 +374,7 @@ public class LuaUsbLibrary {
                     long duration = arg2.optlong(0);
                     try {
                         hid_.click(mask, duration);
-                    } catch (Shell.ShellDiedException | IOException | InterruptedException e) {
+                    } catch (IOException | InterruptedException e) {
                         throw new LuaError(e);
                     }
                     return NIL;
@@ -365,7 +389,7 @@ public class LuaUsbLibrary {
                     byte dy = checkbyte(arg2.checkint());
                     try {
                         hid_.move(dx, dy);
-                    } catch (Shell.ShellDiedException | IOException e) {
+                    } catch (IOException e) {
                         throw new LuaError(e);
                     }
                     return NIL;
@@ -379,7 +403,7 @@ public class LuaUsbLibrary {
                     byte offset = checkbyte(arg.checkint());
                     try {
                         hid_.scroll(offset);
-                    } catch (Shell.ShellDiedException | IOException e) {
+                    } catch (IOException e) {
                         throw new LuaError(e);
                     }
                     return NIL;

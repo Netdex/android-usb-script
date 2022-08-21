@@ -18,7 +18,7 @@ public class RootServiceConnection implements ServiceConnection {
         try {
             remoteFS_ = FileSystemManager.getRemote(service);
         } catch (RemoteException e) {
-            Log.e(TAG, "Remote Error", e);
+            Log.e(TAG, "remote error", e);
         }
     }
 

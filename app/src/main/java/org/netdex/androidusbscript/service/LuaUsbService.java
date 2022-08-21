@@ -7,6 +7,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
@@ -16,6 +17,7 @@ import com.topjohnwu.superuser.ipc.RootService;
 import org.netdex.androidusbscript.MainActivity;
 import org.netdex.androidusbscript.R;
 import org.netdex.androidusbscript.task.LuaUsbTask;
+import org.netdex.androidusbscript.util.FileSystem;
 
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutorCompletionService;
@@ -48,15 +50,23 @@ public class LuaUsbService extends Service {
 
     private static final String CHANNEL_ID = LuaUsbService.class.getName();
     public static final int ONGOING_NOTIFICATION_ID = 1;
+    private NotificationManager notificationManager_;
 
     private final ExecutorService executorService_ = Executors.newSingleThreadExecutor();
     private Future<Result> activeTask_ = null;
-    private RootServiceConnection rootSvcConn_;
-    private NotificationManager notificationManager_;
     private Callback callback_;
 
+    private RootServiceConnection rootSvcConn_;
+    private FileSystem fs_;
+
     public LuaUsbService() {
-        rootSvcConn_ = new RootServiceConnection();
+        rootSvcConn_ = new RootServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                super.onServiceConnected(name, service);
+                fs_ = new FileSystem(this.getRemoteFS());
+            }
+        };
     }
 
     public boolean submitTask(LuaUsbTask task) {
@@ -84,7 +94,7 @@ public class LuaUsbService extends Service {
     }
 
     private Result run(LuaUsbTask task) {
-        task.run();
+        task.run(fs_);
         synchronized (this) {
             activeTask_ = null;
         }

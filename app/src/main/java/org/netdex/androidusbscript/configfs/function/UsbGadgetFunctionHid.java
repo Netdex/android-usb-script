@@ -1,8 +1,9 @@
 package org.netdex.androidusbscript.configfs.function;
 
-import org.netdex.androidusbscript.util.Command;
+import org.netdex.androidusbscript.util.FileSystem;
 
-import eu.chainfire.libsuperuser.Shell;
+import java.io.IOException;
+import java.nio.file.Paths;
 
 /**
  * https://www.kernel.org/doc/Documentation/usb/gadget_hid.txt
@@ -29,24 +30,18 @@ public class UsbGadgetFunctionHid extends UsbGadgetFunction {
 
     @Override
     public String getFunctionDir() {
-        return String.format("%s%d", "hid.usb", id_);
+        return "hid.usb" + id_;
     }
 
     @Override
-    public void create(Shell.Threaded su, String gadgetPath) throws Shell.ShellDiedException {
-        super.create(su, gadgetPath);
+    public void create(FileSystem fs, String gadgetPath) throws IOException {
+        super.create(fs, gadgetPath);
 
         Parameters params = (Parameters) this.params_;
         String functionDir = getFunctionDir();
-        su.run(new String[]{
-                Command.echoToFile(String.valueOf(params.protocol),
-                        String.format("functions/%s/protocol", functionDir)),
-                Command.echoToFile(String.valueOf(params.subclass),
-                        String.format("functions/%s/subclass", functionDir)),
-                Command.echoToFile(String.valueOf(params.reportLength),
-                        String.format("functions/%s/report_length", functionDir)),
-                Command.echoToFile(Command.escapeBytes(params.descriptor),
-                        String.format("functions/%s/report_desc", functionDir), true, false),
-        });
+        fs.fwrite(params.protocol, Paths.get(gadgetPath, "functions", functionDir, "protocol").toString());
+        fs.fwrite(params.subclass, Paths.get(gadgetPath, "functions", functionDir, "subclass").toString());
+        fs.fwrite(params.reportLength, Paths.get(gadgetPath, "functions", functionDir, "report_length").toString());
+        fs.fwrite(params.descriptor, Paths.get(gadgetPath, "functions", functionDir, "report_desc").toString());
     }
 }

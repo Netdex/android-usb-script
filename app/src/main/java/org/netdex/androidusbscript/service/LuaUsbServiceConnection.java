@@ -19,7 +19,7 @@ public class LuaUsbServiceConnection implements ServiceConnection {
 
     @Override
     public void onServiceDisconnected(ComponentName name) {
-
+        service_ = null;
     }
 
     public LuaUsbService getService(){

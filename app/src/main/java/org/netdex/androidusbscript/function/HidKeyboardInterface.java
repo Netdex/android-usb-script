@@ -1,28 +1,45 @@
 package org.netdex.androidusbscript.function;
 
-import org.netdex.androidusbscript.util.Command;
+import static org.netdex.androidusbscript.MainActivity.TAG;
 
+import android.util.Log;
+
+import org.netdex.androidusbscript.util.FileSystem;
+import org.netdex.androidusbscript.util.Util;
+
+import java.io.BufferedOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Arrays;
 
-import eu.chainfire.libsuperuser.Shell;
-
-public class HidKeyboardInterface {
-    private final Shell.Threaded su_;
+public class HidKeyboardInterface extends DeviceStream {
     private final String devicePath_;
 
-    public HidKeyboardInterface(Shell.Threaded su, String devicePath) {
-        this.su_ = su;
-        this.devicePath_ = devicePath;
+    public HidKeyboardInterface(FileSystem fs, String devicePath) throws IOException {
+        super(fs, devicePath);
+        devicePath_ = devicePath;
     }
 
     /**
-     * Sends keyboard command
+     * A        B        C        D        E        F        G        H
+     * XXXXXXXX 00000000 XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX
+     * <p>
+     * A: K modifier mask
+     * B: Reserved
+     * C: K 1; D: K 2; E: K 3; F: K 4; G: K 5; H: K 6;
      *
-     * @param keys command byte[] to send, defined in HID.java
+     * @param keys HID keyboard bytes
      */
-    public void sendKeyboard(byte... keys) throws Shell.ShellDiedException, IOException {
-        sendKeyboardHID(su_, devicePath_, keys);
+    public void sendKeyboard(byte... keys) throws IOException {
+        byte[] buffer = new byte[8];
+        if (keys.length > 7)
+            throw new IllegalArgumentException("Cannot send more than 6 keys");
+        Arrays.fill(buffer, (byte) 0);
+        if (keys.length > 0) buffer[0] = keys[0];
+        if (keys.length > 1) System.arraycopy(keys, 1, buffer, 2, keys.length - 1);
+        Log.d(TAG, String.format("write %s > %s", Util.bytesToHex(buffer), devicePath_));
+        this.write(buffer);
     }
 
     /**
@@ -30,7 +47,7 @@ public class HidKeyboardInterface {
      *
      * @param keys command byte[] to send, defined in HID.java
      */
-    public void pressKeys(byte... keys) throws Shell.ShellDiedException, IOException {
+    public void pressKeys(byte... keys) throws IOException {
         sendKeyboard(keys);
         sendKeyboard();
     }
@@ -83,7 +100,7 @@ public class HidKeyboardInterface {
      *
      * @param s String to send
      */
-    public void sendKeyboard(String s) throws Shell.ShellDiedException, IOException, InterruptedException {
+    public void sendKeyboard(String s) throws IOException, InterruptedException {
         sendKeyboard(s, 0);
     }
 
@@ -93,7 +110,7 @@ public class HidKeyboardInterface {
      * @param s String to send
      * @param d Delay after key press
      */
-    public void sendKeyboard(String s, long d) throws Shell.ShellDiedException, IOException, InterruptedException {
+    public void sendKeyboard(String s, long d) throws IOException, InterruptedException {
         byte lcd = 0;
         for (char c : s.toCharArray()) {
             byte cd = AP_MAP_CODE[(int) c];
@@ -108,27 +125,5 @@ public class HidKeyboardInterface {
             lcd = cd;
         }
         sendKeyboard();
-    }
-
-    /**
-     * A        B        C        D        E        F        G        H
-     * XXXXXXXX 00000000 XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX
-     * <p>
-     * A: K modifier mask
-     * B: Reserved
-     * C: K 1; D: K 2; E: K 3; F: K 4; G: K 5; H: K 6;
-     *
-     * @param sh   SUExtensions shell
-     * @param dev  KB device (/dev/hidg0)
-     * @param keys HID keyboard bytes
-     */
-    public static void sendKeyboardHID(Shell.Threaded sh, String dev, byte... keys) throws Shell.ShellDiedException, IOException {
-        byte[] buffer = new byte[8];
-        if (keys.length > 7)
-            throw new IllegalArgumentException("Cannot send more than 6 keys");
-        Arrays.fill(buffer, (byte) 0);
-        if (keys.length > 0) buffer[0] = keys[0];
-        if (keys.length > 1) System.arraycopy(keys, 1, buffer, 2, keys.length - 1);
-        Command.write(sh, dev, buffer);
     }
 }
