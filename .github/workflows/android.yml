@@ -30,7 +30,7 @@ jobs:
       id: build
       shell: bash
       run: |
-        echo "::set-output name=artifact_name::${{ github.event.repository.name }}-r${{ github.ref_name }}-${{ github.run_id }}.zip"
+        echo "::set-output name=artifact_name::${{ github.event.repository.name }}-r$(git rev-parse --short HEAD)-${{ github.run_id }}.zip"
       
     - name: Upload artifact
       uses: actions/upload-artifact@v2
