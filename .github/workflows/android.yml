@@ -36,4 +36,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: ${{ steps.build.artifact_name }}
-        path: android-usb-script/app/build/outputs/apk/debug/app-debug.apk
+        path: ${{ env.GITHUB_WORKSPACE }}/app/build/outputs/apk/debug/app-debug.apk
