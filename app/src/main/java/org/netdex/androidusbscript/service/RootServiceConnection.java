@@ -4,11 +4,8 @@ import android.content.ComponentName;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.RemoteException;
-import android.util.Log;
 
 import com.topjohnwu.superuser.nio.FileSystemManager;
-
-import static org.netdex.androidusbscript.MainActivity.TAG;
 
 public class RootServiceConnection implements ServiceConnection {
     private FileSystemManager remoteFS_ = null;
@@ -18,7 +15,7 @@ public class RootServiceConnection implements ServiceConnection {
         try {
             remoteFS_ = FileSystemManager.getRemote(service);
         } catch (RemoteException e) {
-            Log.e(TAG, "remote error", e);
+            e.printStackTrace();
         }
     }
 

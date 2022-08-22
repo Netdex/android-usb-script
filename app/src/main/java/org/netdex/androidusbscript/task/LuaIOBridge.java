@@ -7,7 +7,7 @@ package org.netdex.androidusbscript.task;
 public interface LuaIOBridge {
     void onLogMessage(String s);
 
-    boolean onConfirm(String title, String prompt);
+    boolean onConfirm(String title, String message);
 
-    String onPrompt(String title, String def);
+    String onPrompt(String title, String message, String hint, String def);
 }

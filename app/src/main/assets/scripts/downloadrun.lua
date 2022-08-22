@@ -5,8 +5,14 @@
 
 kb = luausb.create({ id = 0, type = "keyboard" })
 
-local file = prompt("File to download?", "https://github.com/Netdex/FlyingCursors/releases/download/1.0.0/FlyingCursors.exe")
-local runAs = confirm("Task UAC", "Launch exe as admin?");
+local file = prompt{
+    message="Enter the URL for the file to download.",
+    hint="File URL",
+    default="https://github.com/Netdex/FlyingCursors/releases/download/1.0.0/FlyingCursors.exe"
+}
+local runAs = confirm{
+    message="Launch executable with administrator privileges?"
+}
 
 while true do
     print("idle")

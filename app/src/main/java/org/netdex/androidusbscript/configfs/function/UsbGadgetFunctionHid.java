@@ -11,10 +11,10 @@ import java.nio.file.Paths;
  */
 public class UsbGadgetFunctionHid extends UsbGadgetFunction {
     public static class Parameters extends UsbGadgetFunction.Parameters {
-        public int protocol;
-        public int subclass;
-        public int reportLength;
-        public byte[] descriptor;
+        public final int protocol;
+        public final int subclass;
+        public final int reportLength;
+        public final byte[] descriptor;
 
         public Parameters(int protocol, int subclass, int reportLength, byte[] descriptor) {
             this.protocol = protocol;

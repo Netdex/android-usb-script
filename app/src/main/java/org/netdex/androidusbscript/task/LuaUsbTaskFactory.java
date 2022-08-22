@@ -1,7 +1,7 @@
 package org.netdex.androidusbscript.task;
 
-/**
- * Created by netdex on 12/28/17.
+/*
+  Created by netdex on 12/28/17.
  */
 
 import android.content.Context;
@@ -14,7 +14,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 
 public class LuaUsbTaskFactory {
-    private LuaIOBridge dialogIO_;
+    private final LuaIOBridge dialogIO_;
 
     public LuaUsbTaskFactory(LuaIOBridge dialogIO) {
         this.dialogIO_ = dialogIO;

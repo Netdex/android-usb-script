@@ -13,13 +13,13 @@ import org.netdex.androidusbscript.util.FileSystem;
 
 public class UsbGadget {
     public static class Parameters {
-        public String manufacturer;
-        public String serial;
-        public String idProduct;
-        public String idVendor;
-        public String product;
+        public final String manufacturer;
+        public final String serial;
+        public final String idProduct;
+        public final String idVendor;
+        public final String product;
 
-        public String configName;
+        public final String configName;
 
         public Parameters(String manufacturer, String serial,
                           String idProduct, String idVendor, String product,

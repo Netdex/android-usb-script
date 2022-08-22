@@ -1,10 +1,14 @@
 ---
---- wallpaper.lua: Changes a Windows 10 desktop wallpaper
+--- Change Windows 10 desktop wallpaper
 ---
 
 kb = luausb.create({ id = 0, type = "keyboard" })
 
-local file = prompt("Wallpaper to download?", "https://i.imgur.com/46wWHZ3.png")
+local file = prompt{
+    message="Enter the URL of the wallpaper to download.",
+    hint="Image URL",
+    default="https://i.imgur.com/46wWHZ3.png"
+}
 
 while true do
     print("idle")

@@ -1,24 +1,15 @@
 package org.netdex.androidusbscript.function;
 
-import static org.netdex.androidusbscript.MainActivity.TAG;
-
-import android.util.Log;
-
 import org.netdex.androidusbscript.util.FileSystem;
-import org.netdex.androidusbscript.util.Util;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Arrays;
 
 
 public class HidMouseInterface extends DeviceStream implements Closeable {
-    private final String devicePath_;
 
     public HidMouseInterface(FileSystem fs, String devicePath) throws IOException {
         super(fs, devicePath);
-        devicePath_ = devicePath;
     }
 
     /**
@@ -35,10 +26,8 @@ public class HidMouseInterface extends DeviceStream implements Closeable {
     public void sendMouse(byte... offset) throws IOException {
         byte[] buffer = new byte[4];
         if (offset.length > 4)
-            throw new IllegalArgumentException("Your mouse can only move in two dimensions");
-        Arrays.fill(buffer, (byte) 0);
+            throw new IllegalArgumentException("Too many parameters in HID report");
         System.arraycopy(offset, 0, buffer, 0, offset.length);
-        Log.d(TAG, String.format("write %s > %s", Util.bytesToHex(buffer), devicePath_));
         this.write(buffer);
     }
 

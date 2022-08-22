@@ -14,7 +14,7 @@ import java.util.Locale;
  */
 public class UsbGadgetFunctionMassStorage extends UsbGadgetFunction {
     public static class Parameters extends UsbGadgetFunction.Parameters {
-        public String file;
+        public final String file;
         public boolean ro = false;
         public boolean removable = true;
         public boolean cdrom = false;

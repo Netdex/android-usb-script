@@ -30,8 +30,8 @@ public class LuaAssetAdapter extends RecyclerView.Adapter<LuaAssetAdapter.ViewHo
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        public TextView textView;
-        public View layout;
+        public final TextView textView;
+        public final View layout;
 
         public ViewHolder(View view) {
             super(view);

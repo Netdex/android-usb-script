@@ -28,7 +28,6 @@
         <service
             android:name="org.netdex.androidusbscript.service.LuaUsbService"
             android:enabled="true" />
-
     </application>
 
 </manifest>

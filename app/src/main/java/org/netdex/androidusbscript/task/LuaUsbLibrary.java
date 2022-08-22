@@ -37,7 +37,7 @@ public class LuaUsbLibrary implements AutoCloseable {
     private final FileSystem fs_;
     private final UsbGadget usbGadget_;
     private final LuaIOBridge aio_;
-    private List<Closeable> devHandles_ = new ArrayList<>();
+    private final List<Closeable> devHandles_ = new ArrayList<>();
 
     public LuaUsbLibrary(FileSystem fs, UsbGadget usbGadget, LuaIOBridge aio) {
         this.fs_ = fs;
@@ -92,23 +92,28 @@ public class LuaUsbLibrary implements AutoCloseable {
         }
     }
 
-    class confirm extends TwoArgFunction {
+    class confirm extends OneArgFunction {
 
         @Override
-        public LuaValue call(LuaValue title, LuaValue message) {
-            String t = title.tojstring();
-            String m = message.tojstring();
-            return valueOf(aio_.onConfirm(t, m));
+        public LuaValue call(LuaValue arg) {
+            LuaTable table = arg.checktable();
+            String title = table.get("title").optjstring("Confirm");
+            String prompt = table.get("message").optjstring("");
+            return valueOf(aio_.onConfirm(title, prompt));
         }
     }
 
-    class prompt extends TwoArgFunction {
+    class prompt extends OneArgFunction {
 
         @Override
-        public LuaValue call(LuaValue title, LuaValue defaults) {
-            String t = title.tojstring();
-            String d = defaults.isnil() ? "" : defaults.tojstring();
-            return valueOf(aio_.onPrompt(t, d));
+        public LuaValue call(LuaValue arg) {
+            LuaTable table = arg.checktable();
+            String title = table.get("title").optjstring("Prompt");
+            String prompt = table.get("message").optjstring("");
+            String hint = table.get("hint").optjstring("Text");
+            String def = table.get("default").optjstring("");
+
+            return valueOf(aio_.onPrompt(title, prompt, hint, def));
         }
     }
 
@@ -193,10 +198,9 @@ public class LuaUsbLibrary implements AutoCloseable {
                 // MITIGATION: Windows seems to memoize usb configurations by serial number
                 // (not across reboots). This causes undefined behavior when the configuration
                 // changes. Generate a serial number based on the configuration.
-                String serial = usbGadget_.serial();
                 UsbGadget.Parameters gadgetParameters = new UsbGadget.Parameters(
                         "The Linux Foundation",
-                        serial,
+                        usbGadget_.serial(),
                         "0x1d6b",
                         "0x0105",
                         "FunctionFS Gadget",
@@ -227,9 +231,8 @@ public class LuaUsbLibrary implements AutoCloseable {
             private final HidKeyboardInterface hid_;
 
             public keyboard(int id) {
-                String devicePath = "/dev/hidg" + id;
                 try {
-                    this.hid_ = new HidKeyboardInterface(fs_, devicePath);
+                    this.hid_ = new HidKeyboardInterface(fs_, "/dev/hidg" + id);
                     devHandles_.add(this.hid_);
                 } catch (IOException e) {
                     throw new LuaError(e);
@@ -331,9 +334,8 @@ public class LuaUsbLibrary implements AutoCloseable {
             private final HidMouseInterface hid_;
 
             public mouse(int id) {
-                String devicePath = "/dev/hidg" + id;
                 try {
-                    this.hid_ = new HidMouseInterface(fs_, devicePath);
+                    this.hid_ = new HidMouseInterface(fs_, "/dev/hidg" + id);
                     devHandles_.add(this.hid_);
                 } catch (IOException e) {
                     throw new LuaError(e);

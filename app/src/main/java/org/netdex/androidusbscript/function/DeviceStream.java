@@ -18,6 +18,7 @@ public abstract class DeviceStream implements Closeable {
     }
 
     protected void write(byte[] b) throws IOException {
+//        Log.d(TAG, String.format("write %s > %s", Util.bytesToHex(buffer), devicePath_));
         this.getOutputStream().write(b);
     }
 

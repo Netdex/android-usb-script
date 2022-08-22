@@ -1,24 +1,13 @@
 package org.netdex.androidusbscript.function;
 
-import static org.netdex.androidusbscript.MainActivity.TAG;
-
-import android.util.Log;
-
 import org.netdex.androidusbscript.util.FileSystem;
-import org.netdex.androidusbscript.util.Util;
 
-import java.io.BufferedOutputStream;
-import java.io.Closeable;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Arrays;
 
 public class HidKeyboardInterface extends DeviceStream {
-    private final String devicePath_;
 
     public HidKeyboardInterface(FileSystem fs, String devicePath) throws IOException {
         super(fs, devicePath);
-        devicePath_ = devicePath;
     }
 
     /**
@@ -34,11 +23,9 @@ public class HidKeyboardInterface extends DeviceStream {
     public void sendKeyboard(byte... keys) throws IOException {
         byte[] buffer = new byte[8];
         if (keys.length > 7)
-            throw new IllegalArgumentException("Cannot send more than 6 keys");
-        Arrays.fill(buffer, (byte) 0);
+            throw new IllegalArgumentException("Too many parameters in HID report");
         if (keys.length > 0) buffer[0] = keys[0];
         if (keys.length > 1) System.arraycopy(keys, 1, buffer, 2, keys.length - 1);
-        Log.d(TAG, String.format("write %s > %s", Util.bytesToHex(buffer), devicePath_));
         this.write(buffer);
     }
 
@@ -96,15 +83,6 @@ public class HidKeyboardInterface extends DeviceStream {
     /* End string to code conversion tables */
 
     /**
-     * Sends a string to the keyboard with no delay
-     *
-     * @param s String to send
-     */
-    public void sendKeyboard(String s) throws IOException, InterruptedException {
-        sendKeyboard(s, 0);
-    }
-
-    /**
      * Sends a string to the keyboard
      *
      * @param s String to send
@@ -113,8 +91,8 @@ public class HidKeyboardInterface extends DeviceStream {
     public void sendKeyboard(String s, long d) throws IOException, InterruptedException {
         byte lcd = 0;
         for (char c : s.toCharArray()) {
-            byte cd = AP_MAP_CODE[(int) c];
-            boolean st = AP_MAP_SHIFT[(int) c];
+            byte cd = AP_MAP_CODE[c];
+            boolean st = AP_MAP_SHIFT[c];
             if (cd == -1)
                 throw new IllegalArgumentException("Given string contains illegal characters");
             if (lcd == cd) sendKeyboard();

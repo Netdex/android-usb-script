@@ -4,8 +4,6 @@ import static org.netdex.androidusbscript.MainActivity.TAG;
 
 import android.util.Log;
 
-import com.topjohnwu.superuser.nio.FileSystemManager;
-
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
@@ -14,7 +12,9 @@ import org.netdex.androidusbscript.configfs.UsbGadget;
 import org.netdex.androidusbscript.util.FileSystem;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.StringReader;
+import java.io.StringWriter;
 
 
 /**
@@ -37,9 +37,8 @@ public class LuaUsbTask {
         try {
             UsbGadget usbGadget = new UsbGadget("hidf", "/config");
 
+            ioBridge_.onLogMessage("<b>-- Started <i>" + name_ + "</i></b>");
             try {
-                ioBridge_.onLogMessage("<b>-- Started <i>" + name_ + "</i></b>");
-
                 try (LuaUsbLibrary luaUsbLibrary = new LuaUsbLibrary(fs, usbGadget, ioBridge_)) {
                     Globals globals = JsePlatform.standardGlobals();
                     globals.load(new StringReader("package.path = '/assets/scripts/?.lua;'"),
@@ -49,34 +48,45 @@ public class LuaUsbTask {
                     luaChunk_.call();
                 } catch (LuaError e) {
                     if (e.getCause() instanceof IOException) {
-                        e.printStackTrace();
                         throw (IOException) e.getCause();
                     } else if (!(e.getCause() instanceof InterruptedException)) {
-                        e.printStackTrace();
-                        ioBridge_.onLogMessage("<b>LuaError:</b> " +
-                                e.getMessage().replace("\n", "<br>"));
+                        ioBridge_.onLogMessage(getExceptionMessage(e));
                     }
                 }
             } finally {
                 ioBridge_.onLogMessage("<b>-- Ended <i>" + name_ + "</i></b>");
 
-                if (usbGadget.isBound(fs)) {
-                    usbGadget.unbind(fs);
-                } else {
-                    Log.w(TAG, "usb gadget is not bound on task end");
-                }
                 if (usbGadget.isCreated(fs)) {
+                    if (usbGadget.isBound(fs)) {
+                        usbGadget.unbind(fs);
+                    } else {
+                        Log.w(TAG, "USB gadget is not bound on task end");
+                    }
                     usbGadget.remove(fs);
                 } else {
-                    Log.w(TAG, "usb gadget is not created on task end");
+                    Log.w(TAG, "USB gadget is not created on task end");
                 }
             }
         } catch (IOException e) {
-            ioBridge_.onLogMessage("<b>IOException:</b> " + e.getMessage().replace("\n", "<br>"));
+            e.printStackTrace();
+            ioBridge_.onLogMessage(getExceptionMessage(e));
         }
     }
 
     public String getName() {
         return name_;
+    }
+
+    private String getExceptionMessage(Exception e) {
+        if (e instanceof LuaError) {
+            return "<b>" + e.getClass().getName() + "</b>:<br>" + e.getMessage().replace("\n", "<br>");
+        } else {
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            e.printStackTrace(pw);
+
+            String stackTrace = sw.toString();
+            return "<b>Unhandled exception:</b><br>" + stackTrace.trim().replace("\n", "<br>");
+        }
     }
 }

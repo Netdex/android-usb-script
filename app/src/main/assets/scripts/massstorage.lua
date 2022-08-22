@@ -1,5 +1,5 @@
 ---
---- a simple default mass storage device
+--- Simple mass storage device using default options
 ---
 
 _ = luausb.create({ id = 0, type = "storage" })

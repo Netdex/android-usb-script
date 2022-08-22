@@ -12,7 +12,7 @@ public class HidInput {
             BTN_LEFT(0x1),
             BTN_RIGHT(0x2),
             BTN_MIDDLE(0x4);
-            public byte code;
+            public final byte code;
 
             Button(int code) {
                 this.code = (byte) code;
@@ -32,7 +32,7 @@ public class HidInput {
             MOD_RALT(0x40),
             MOD_RSUPER(0x80); // Windows key
 
-            public byte code;
+            public final byte code;
 
             Mod(int code) {
                 this.code = (byte) code;
@@ -183,7 +183,7 @@ public class HidInput {
             KEY_VOLUME_UP(0x80),
             KEY_VOLUME_DOWN(0x81);
 
-            public byte code;
+            public final byte code;
 
             Key(int code) {
                 this.code = (byte) code;

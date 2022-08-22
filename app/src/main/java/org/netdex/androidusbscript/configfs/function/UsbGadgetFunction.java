@@ -14,8 +14,8 @@ public abstract class UsbGadgetFunction {
 
     }
 
-    protected int id_;
-    protected Parameters params_;
+    protected final int id_;
+    protected final Parameters params_;
 
     public UsbGadgetFunction(int id_, Parameters params_) {
         this.id_ = id_;

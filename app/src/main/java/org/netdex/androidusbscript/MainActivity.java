@@ -3,6 +3,7 @@ package org.netdex.androidusbscript;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -18,8 +19,10 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.os.HandlerCompat;
 
@@ -36,13 +39,19 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = "android-usb-script";
 
+    private NotificationBroadcastReceiver notificationBroadcastReceiver_;
+
+    private Handler handler_;
+    private ActivityResultLauncher<Intent> selectAssetLauncher_;
+    private ActivityResultLauncher<Intent> selectScriptLauncher_;
+
     private LuaUsbServiceConnection luaUsbSvcConn_;
     private LuaUsbService luaUsbSvc_;
     private LuaUsbTaskFactory luaUsbTaskFactory_;
-    private Handler handler_;
 
     private Button btnCancel_;
 
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -52,6 +61,15 @@ public class MainActivity extends AppCompatActivity {
         btnCancel_ = findViewById(R.id.btn_cancel);
         TextView logView = findViewById(R.id.text_log);
         ScrollView scrollView = findViewById(R.id.scrollview);
+
+        selectAssetLauncher_ = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(), this::onSelectLuaAsset);
+        selectScriptLauncher_ = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(), this::onSelectLuaScript);
+
+        notificationBroadcastReceiver_ = new NotificationBroadcastReceiver();
+        IntentFilter filter = new IntentFilter(NotificationBroadcastReceiver.ACTION_STOP);
+        registerReceiver(notificationBroadcastReceiver_, filter);
 
         LuaIOBridge dialogIO = new LuaIOBridge() {
             @Override
@@ -64,15 +82,13 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public boolean onConfirm(String title, String prompt) {
-                ConfirmDialog dialog = new ConfirmDialog(MainActivity.this, title, prompt);
-                return dialog.show();
+            public boolean onConfirm(String title, String message) {
+                return new ConfirmDialog(MainActivity.this, title, message).show();
             }
 
             @Override
-            public String onPrompt(String title, String def) {
-                PromptDialog dialog = new PromptDialog(MainActivity.this, title, def);
-                return dialog.show();
+            public String onPrompt(String title, String message, String hint, String def) {
+                return new PromptDialog(MainActivity.this, title, message, hint, def).show();
             }
         };
 
@@ -86,18 +102,18 @@ public class MainActivity extends AppCompatActivity {
             public void onServiceConnected(ComponentName name, IBinder binder) {
                 super.onServiceConnected(name, binder);
                 luaUsbSvc_ = luaUsbSvcConn_.getService();
-                LuaUsbService.Callback callback = new LuaUsbService.Callback() {
-                    @Override
-                    public void onTaskCompleted(LuaUsbTask task) {
-                        handler_.post(() -> {
-                            btnCancel_.setEnabled(false);
-                        });
-                    }
-                };
+                LuaUsbService.Callback callback = task -> handler_.post(() -> {
+                    btnCancel_.setEnabled(false);
+                });
                 luaUsbSvc_.setCallback(callback);
             }
         };
         bindService(serviceIntent, luaUsbSvcConn_, BIND_AUTO_CREATE);
+    }
+
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(notificationBroadcastReceiver_);
     }
 
     public void submitTask(LuaUsbTask task) {
@@ -113,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
+    public boolean onCreateOptionsMenu(@NonNull Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.menu_main, menu);
         return true;
@@ -122,49 +138,53 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.action_asset:
+            case (R.id.action_asset):
                 openLuaAsset();
                 return true;
-            case R.id.action_script:
+            case (R.id.action_script):
                 openLuaScript();
                 return true;
         }
         return false;
     }
 
-    private static final int PICK_LUA_ASSET = 2;
     private static final int PICK_LUA_SCRIPT = 3;
 
     private void openLuaAsset() {
         Intent intent = new Intent(this, SelectAssetActivity.class);
-        startActivityForResult(intent, PICK_LUA_ASSET);
+        selectAssetLauncher_.launch(intent);
     }
 
     private void openLuaScript() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("*/*");
-        startActivityForResult(intent, PICK_LUA_SCRIPT);
+        setResult(PICK_LUA_SCRIPT, intent);
+        selectScriptLauncher_.launch(intent);
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode != Activity.RESULT_OK || data == null)
+    protected void onSelectLuaAsset(ActivityResult result) {
+        if (result.getResultCode() != Activity.RESULT_OK)
             return;
+        Intent data = result.getData();
 
-        switch (requestCode) {
-            case PICK_LUA_ASSET:
-                String name = data.getStringExtra("name");
-                String path = data.getStringExtra("path");
-                submitTask(luaUsbTaskFactory_.createTaskFromLuaAsset(
-                        MainActivity.this, name, path));
-                break;
-            case PICK_LUA_SCRIPT:
-                Uri uri = data.getData();
-                submitTask(luaUsbTaskFactory_.createTaskFromLuaScript(
-                        MainActivity.this, uri.getLastPathSegment(), uri));
-                break;
-        }
+        String name = data.getStringExtra("name");
+        String path = data.getStringExtra("path");
+        submitTask(luaUsbTaskFactory_.createTaskFromLuaAsset(
+                MainActivity.this, name, path));
+    }
+
+    protected void onSelectLuaScript(ActivityResult result) {
+        if (result.getResultCode() != Activity.RESULT_OK)
+            return;
+        Intent data = result.getData();
+
+        Uri uri = data.getData();
+        submitTask(luaUsbTaskFactory_.createTaskFromLuaScript(
+                MainActivity.this, uri.getLastPathSegment(), uri));
+    }
+
+    public LuaUsbService getLuaUsbService() {
+        return luaUsbSvc_;
     }
 }
