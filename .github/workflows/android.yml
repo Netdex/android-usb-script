@@ -1,0 +1,30 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Generate build information
+      id: build
+      shell: bash
+      run: |
+        echo "::set-output name=artifact_name::androidusbscript-$(git rev-parse --short HEAD).apk"
+        
+    - uses: sparkfabrik/android-build-action@v1.0.0
+      with:
+        project-path: .
+        output-path: ${{ steps.build.artifact_name }}
+        
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ steps.build.artifact_name }}
+        path: .
