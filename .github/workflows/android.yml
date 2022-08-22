@@ -32,6 +32,12 @@ jobs:
       run: |
         echo "::set-output name=artifact_name::androidusbscript-$(git rev-parse --short HEAD).apk"
         
+    - name: Help
+      id: what
+      shell: bash
+      run: |
+        tree
+        
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
