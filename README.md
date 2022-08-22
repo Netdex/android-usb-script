@@ -1,4 +1,5 @@
 # Android USB Script
+[![Android CI](https://github.com/Netdex/android-usb-script/actions/workflows/android.yml/badge.svg)](https://github.com/Netdex/android-usb-script/actions/workflows/android.yml)
 
 **Use at your own risk. For educational purposes only.**
 
@@ -8,6 +9,8 @@ with arbitrary composite USB devices.
 **Root access is required.**
 
 **Lua scripts are run as root**. Do not run untrusted scripts!
+
+Download debug build artifacts from [the latest workflow run](https://github.com/Netdex/android-usb-script/actions).
 
 ## Demonstration
 
