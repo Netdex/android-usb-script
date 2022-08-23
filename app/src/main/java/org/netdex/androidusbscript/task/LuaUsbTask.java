@@ -11,6 +11,7 @@ import org.luaj.vm2.lib.jse.JsePlatform;
 import org.netdex.androidusbscript.configfs.UsbGadget;
 import org.netdex.androidusbscript.util.FileSystem;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
@@ -21,11 +22,14 @@ import java.io.StringWriter;
  * Created by netdex on 1/16/2017.
  */
 
-public class LuaUsbTask {
+public class LuaUsbTask implements Closeable {
 
     private final String name_;
     private final String src_;
     private final LuaIOBridge ioBridge_;
+
+    private LuaUsbLibrary luaUsbLibrary_;
+    private Thread taskThread_;
 
     public LuaUsbTask(String name, String src, LuaIOBridge ioBridge) {
         this.name_ = name;
@@ -34,16 +38,19 @@ public class LuaUsbTask {
     }
 
     public void run(FileSystem fs) {
+        taskThread_ = Thread.currentThread();
+
         try {
             UsbGadget usbGadget = new UsbGadget("hidf", "/config");
 
             ioBridge_.onLogMessage("<b>-- Started <i>" + name_ + "</i></b>");
             try {
-                try (LuaUsbLibrary luaUsbLibrary = new LuaUsbLibrary(fs, usbGadget, ioBridge_)) {
+                try {
+                    luaUsbLibrary_ = new LuaUsbLibrary(fs, usbGadget, ioBridge_);
                     Globals globals = JsePlatform.standardGlobals();
-                    globals.load(new StringReader("package.path = '/assets/scripts/?.lua;'"),
+                    globals.load(new StringReader("package.path = '/assets/lib/?.lua;'"),
                             "initAndroidPath").call();
-                    luaUsbLibrary.bind(globals);
+                    luaUsbLibrary_.bind(globals);
                     LuaValue luaChunk_ = globals.load(src_);
                     luaChunk_.call();
                 } catch (LuaError e) {
@@ -51,6 +58,11 @@ public class LuaUsbTask {
                         throw (IOException) e.getCause();
                     } else if (!(e.getCause() instanceof InterruptedException)) {
                         ioBridge_.onLogMessage(getExceptionMessage(e));
+                    }
+                } finally {
+                    if (luaUsbLibrary_ != null) {
+                        luaUsbLibrary_.close();
+                        luaUsbLibrary_ = null;
                     }
                 }
             } finally {
@@ -81,12 +93,16 @@ public class LuaUsbTask {
         if (e instanceof LuaError) {
             return "<b>" + e.getClass().getName() + "</b>:<br>" + e.getMessage().replace("\n", "<br>");
         } else {
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            e.printStackTrace(pw);
-
-            String stackTrace = sw.toString();
-            return "<b>Unhandled exception:</b><br>" + stackTrace.trim().replace("\n", "<br>");
+            return "<b>Unhandled exception:</b><br>" + e.toString().replace("\n", "<br>");
         }
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (luaUsbLibrary_ != null) {
+            luaUsbLibrary_.close();
+            luaUsbLibrary_ = null;
+        }
+        taskThread_.interrupt();
     }
 }

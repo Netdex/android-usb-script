@@ -1,14 +1,15 @@
-package org.netdex.androidusbscript.function;
+package org.netdex.androidusbscript.lua;
 
+import org.netdex.androidusbscript.function.DeviceStream;
 import org.netdex.androidusbscript.util.FileSystem;
 
 import java.io.Closeable;
 import java.io.IOException;
 
 
-public class HidMouseInterface extends DeviceStream implements Closeable {
+public class LuaHidMouse extends DeviceStream implements Closeable {
 
-    public HidMouseInterface(FileSystem fs, String devicePath) throws IOException {
+    public LuaHidMouse(FileSystem fs, String devicePath) throws IOException {
         super(fs, devicePath);
     }
 
@@ -23,7 +24,7 @@ public class HidMouseInterface extends DeviceStream implements Closeable {
      *
      * @param offset HID mouse bytes
      */
-    public void sendMouse(byte... offset) throws IOException {
+    public void raw(byte... offset) throws IOException, InterruptedException {
         byte[] buffer = new byte[4];
         if (offset.length > 4)
             throw new IllegalArgumentException("Too many parameters in HID report");
@@ -32,18 +33,18 @@ public class HidMouseInterface extends DeviceStream implements Closeable {
     }
 
     public void click(byte mask, long duration) throws IOException, InterruptedException {
-        sendMouse(mask);
+        raw(mask);
         if (duration > 0) {
             Thread.sleep(duration);
         }
-        sendMouse();
+        raw();
     }
 
-    public void move(byte dx, byte dy) throws IOException {
-        sendMouse((byte) 0, dx, dy);
+    public void move(byte dx, byte dy) throws IOException, InterruptedException {
+        raw((byte) 0, dx, dy);
     }
 
-    public void scroll(byte offset) throws IOException {
-        sendMouse((byte) 0, (byte) 0, (byte) 0, offset);
+    public void scroll(byte offset) throws IOException, InterruptedException {
+        raw((byte) 0, (byte) 0, (byte) 0, offset);
     }
 }

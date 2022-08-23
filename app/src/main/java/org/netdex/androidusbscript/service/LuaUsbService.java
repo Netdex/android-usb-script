@@ -22,6 +22,7 @@ import org.netdex.androidusbscript.R;
 import org.netdex.androidusbscript.task.LuaUsbTask;
 import org.netdex.androidusbscript.util.FileSystem;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -41,10 +42,6 @@ public class LuaUsbService extends Service {
         }
     }
 
-    public static class Result {
-
-    }
-
     public interface Callback {
         void onTaskCompleted(LuaUsbTask task);
     }
@@ -54,7 +51,7 @@ public class LuaUsbService extends Service {
     private NotificationManager notificationManager_;
 
     private final ExecutorService executorService_ = Executors.newSingleThreadExecutor();
-    private Future<Result> activeTask_ = null;
+    private LuaUsbTask activeTask_ = null;
     private Callback callback_;
 
     private RootServiceConnection rootSvcConn_;
@@ -74,10 +71,11 @@ public class LuaUsbService extends Service {
         Log.v(TAG, "LuaUsbService.submitTask()");
         synchronized (this) {
             if (activeTask_ != null) return false;
-            if (notificationManager_ != null)
-                notificationManager_.notify(ONGOING_NOTIFICATION_ID, getNotification(task));
-            activeTask_ = executorService_.submit(() -> run(task));
+            activeTask_ = task;
+            executorService_.execute(() -> run(task));
         }
+        if (notificationManager_ != null)
+            notificationManager_.notify(ONGOING_NOTIFICATION_ID, getNotification(task));
         return true;
     }
 
@@ -85,22 +83,24 @@ public class LuaUsbService extends Service {
         callback_ = callback;
     }
 
-    public boolean stopActiveTask() {
+    public void stopActiveTask() {
         Log.v(TAG, "LuaUsbService.stopActiveTask()");
         synchronized (this) {
-            if (activeTask_ == null) return false;
-            activeTask_.cancel(true);
+            if (activeTask_ == null) return;
+            try {
+                activeTask_.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-        return true;
     }
 
-    private Result run(LuaUsbTask task) {
+    private void run(LuaUsbTask task) {
         task.run(fs_);
         synchronized (this) {
             activeTask_ = null;
         }
         onTaskCompleted(task);
-        return new Result();
     }
 
     private void onTaskCompleted(LuaUsbTask task) {

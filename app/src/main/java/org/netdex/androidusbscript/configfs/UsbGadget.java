@@ -80,7 +80,6 @@ public class UsbGadget {
 
     public void bind(FileSystem fs) throws IOException {
         Log.v(TAG, "UsbGadget.bind()");
-        String gadgetPath = getGadgetPath(gadget_name_);
         if (!isCreated(fs))
             throw new IllegalStateException("USB gadget does not exist");
         if (isBound(fs))

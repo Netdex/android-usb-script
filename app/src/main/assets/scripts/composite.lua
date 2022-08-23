@@ -16,10 +16,10 @@ while true do
     wait(1000)
 
     -- send a string from keyboard 1
-    kb1.string("kb1")
+    kb1:string("kb1")
     wait(1000)
     -- send a string from keyboard 2
-    kb2.string("kb2")
+    kb2:string("kb2")
 
     print("done")
 

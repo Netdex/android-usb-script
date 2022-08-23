@@ -4,23 +4,14 @@ import static org.netdex.androidusbscript.MainActivity.TAG;
 
 import android.util.Log;
 
-import org.luaj.vm2.Globals;
-import org.luaj.vm2.LuaError;
-import org.luaj.vm2.LuaFunction;
-import org.luaj.vm2.LuaTable;
-import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.Varargs;
-import org.luaj.vm2.lib.OneArgFunction;
-import org.luaj.vm2.lib.TwoArgFunction;
-import org.luaj.vm2.lib.VarArgFunction;
-import org.luaj.vm2.lib.ZeroArgFunction;
-import org.netdex.androidusbscript.configfs.UsbGadget;
-import org.netdex.androidusbscript.configfs.function.UsbGadgetFunctionHid;
-import org.netdex.androidusbscript.configfs.function.UsbGadgetFunctionMassStorage;
+import org.luaj.vm2.*;
+import org.luaj.vm2.lib.*;
+import org.luaj.vm2.lib.jse.CoerceJavaToLua;
+import org.netdex.androidusbscript.configfs.*;
+import org.netdex.androidusbscript.configfs.function.*;
 import org.netdex.androidusbscript.function.HidDescriptor;
-import org.netdex.androidusbscript.function.HidInput;
-import org.netdex.androidusbscript.function.HidKeyboardInterface;
-import org.netdex.androidusbscript.function.HidMouseInterface;
+import org.netdex.androidusbscript.function.HidInput.*;
+import org.netdex.androidusbscript.lua.*;
 import org.netdex.androidusbscript.util.FileSystem;
 
 import java.io.Closeable;
@@ -51,13 +42,13 @@ public class LuaUsbLibrary implements AutoCloseable {
         for (LuaFunction f : new LuaFunction[]{new wait(), new print(), new confirm(), new prompt()}) {
             globals.set(f.name(), f);
         }
-        for (HidInput.Keyboard.Key ikk : HidInput.Keyboard.Key.values()) {
+        for (Keyboard.Key ikk : Keyboard.Key.values()) {
             globals.set(ikk.name(), ikk.code);
         }
-        for (HidInput.Keyboard.Mod ikm : HidInput.Keyboard.Mod.values()) {
+        for (Keyboard.Mod ikm : Keyboard.Mod.values()) {
             globals.set(ikm.name(), ikm.code);
         }
-        for (HidInput.Mouse.Button imb : HidInput.Mouse.Button.values()) {
+        for (Mouse.Button imb : Mouse.Button.values()) {
             globals.set(imb.name(), imb.code);
         }
     }
@@ -70,7 +61,7 @@ public class LuaUsbLibrary implements AutoCloseable {
         }
     }
 
-    class wait extends OneArgFunction {
+    static class wait extends OneArgFunction {
         @Override
         public LuaValue call(LuaValue arg) {
             long d = arg.checklong();
@@ -125,8 +116,9 @@ public class LuaUsbLibrary implements AutoCloseable {
         @Override
         public LuaValue call() {
             LuaValue library = tableOf();
-            library.set("create", new create());
-            library.set("state", new state());
+            for (LuaFunction f : new LuaFunction[]{new create(), new state()}) {
+                library.set(f.name(), f);
+            }
             return library;
         }
 
@@ -166,14 +158,14 @@ public class LuaUsbLibrary implements AutoCloseable {
                             UsbGadgetFunctionHid fcnHid = new UsbGadgetFunctionHid(
                                     id, HidDescriptor.KEYBOARD.getParameters());
                             usbGadget_.addFunction(fcnHid);
-                            device = new keyboard(id).call();
+                            device = keyboard(id);
                             break;
                         }
                         case "mouse": {
                             UsbGadgetFunctionHid fcnHid = new UsbGadgetFunctionHid(
                                     id, HidDescriptor.MOUSE.getParameters());
                             usbGadget_.addFunction(fcnHid);
-                            device = new mouse(id).call();
+                            device = mouse(id);
                             break;
                         }
                         case "storage":
@@ -187,7 +179,7 @@ public class LuaUsbLibrary implements AutoCloseable {
                             UsbGadgetFunctionMassStorage fcnStor = new UsbGadgetFunctionMassStorage(
                                     id, storParam);
                             usbGadget_.addFunction(fcnStor);
-                            device = new storage(id).call();
+                            device = NIL;
                             break;
                         default:
                             throw new LuaError(String.format("Invalid function type \"%s\"", type));
@@ -226,212 +218,26 @@ public class LuaUsbLibrary implements AutoCloseable {
                 }
             }
         }
+    }
 
-        class keyboard extends ZeroArgFunction {
-            private final HidKeyboardInterface hid_;
-
-            public keyboard(int id) {
-                try {
-                    this.hid_ = new HidKeyboardInterface(fs_, "/dev/hidg" + id);
-                    devHandles_.add(this.hid_);
-                } catch (IOException e) {
-                    throw new LuaError(e);
-                }
-            }
-
-            @Override
-            public LuaValue call() {
-                LuaValue library = tableOf();
-                for (LuaFunction f : new LuaFunction[]{
-                        new raw(), new chord(), new press(), new string(), new debug()}) {
-                    library.set(f.name(), f);
-                }
-                return library;
-            }
-
-            class raw extends VarArgFunction {
-                @Override
-                public Varargs invoke(Varargs args) {
-                    byte[] a = new byte[args.narg()];
-                    for (int i = 1; i <= args.narg(); ++i) {
-                        a[i - 1] = checkbyte(args.arg(i).checkint());
-                    }
-                    try {
-                        hid_.sendKeyboard(a);
-                    } catch (IOException e) {
-                        throw new LuaError(e);
-                    }
-                    return NONE;
-                }
-            }
-
-            class chord extends VarArgFunction {
-                @Override
-                public Varargs invoke(Varargs args) {
-                    args.argcheck(args.narg() >= 2, 0, "at least 2 args required");
-
-                    byte mask;
-                    if (args.arg1().isint()) {
-                        mask = checkbyte(args.checkint(1));
-                    } else {
-                        mask = 0;
-                        LuaTable mods = args.checktable(1);
-                        for (int i = 1; i <= mods.length(); ++i) {
-                            mask |= checkbyte(mods.get(i).checkint());
-                        }
-                    }
-
-                    byte[] a = new byte[args.narg()];
-                    a[0] = mask;
-                    for (int i = 2; i <= args.narg(); ++i) {
-                        a[i - 1] = checkbyte(args.arg(i).checkint());
-                    }
-                    try {
-                        hid_.pressKeys(a);
-                    } catch (IOException e) {
-                        throw new LuaError(e);
-                    }
-                    return NONE;
-                }
-            }
-
-            class press extends VarArgFunction {
-                @Override
-                public Varargs invoke(Varargs args) {
-                    byte[] a = new byte[args.narg() + 1];
-                    a[0] = HidInput.Keyboard.Mod.MOD_NONE.code;
-                    for (int i = 1; i <= args.narg(); ++i) {
-                        a[i] = checkbyte(args.arg(i).checkint());
-                    }
-                    try {
-                        hid_.pressKeys(a);
-                    } catch (IOException e) {
-                        throw new LuaError(e);
-                    }
-                    return NONE;
-                }
-
-            }
-
-            class string extends TwoArgFunction {
-                @Override
-                public LuaValue call(LuaValue arg1, LuaValue arg2) {
-                    String string = arg1.checkjstring();
-                    long delay = arg2.optlong(0);
-                    try {
-                        hid_.sendKeyboard(string, delay);
-                    } catch (IOException | InterruptedException e) {
-                        throw new LuaError(e);
-                    }
-                    return NIL;
-                }
-            }
-
-            class debug extends ZeroArgFunction {
-                @Override
-                public LuaValue call() {
-                    try {
-                        return valueOf(hid_.available());
-                    } catch (IOException e) {
-                        throw new LuaError(e);
-                    }
-                }
-            }
+    public LuaValue keyboard(int id) {
+        try {
+            LuaHidKeyboard hid = new LuaHidKeyboard(fs_, "/dev/hidg" + id);
+            devHandles_.add(hid);
+            return CoerceJavaToLua.coerce(hid);
+        } catch (IOException e) {
+            throw new LuaError(e);
         }
+    }
 
-        class mouse extends ZeroArgFunction {
 
-            private final HidMouseInterface hid_;
-
-            public mouse(int id) {
-                try {
-                    this.hid_ = new HidMouseInterface(fs_, "/dev/hidg" + id);
-                    devHandles_.add(this.hid_);
-                } catch (IOException e) {
-                    throw new LuaError(e);
-                }
-            }
-
-            @Override
-            public LuaValue call() {
-                LuaValue library = tableOf();
-                for (LuaFunction f : new LuaFunction[]{
-                        new raw(), new click(), new move(), new scroll()}) {
-                    library.set(f.name(), f);
-                }
-                return library;
-            }
-
-            class raw extends VarArgFunction {
-                @Override
-                public Varargs invoke(Varargs args) {
-                    byte[] a = new byte[args.narg()];
-                    for (int i = 1; i <= args.narg(); ++i) {
-                        a[i - 1] = (byte) args.arg(i).checkint();
-                    }
-                    try {
-                        hid_.sendMouse(a);
-                    } catch (IOException e) {
-                        throw new LuaError(e);
-                    }
-                    return NONE;
-                }
-            }
-
-            class click extends TwoArgFunction {
-
-                @Override
-                public LuaValue call(LuaValue arg1, LuaValue arg2) {
-                    byte mask = checkbyte(arg1.checkint());
-                    long duration = arg2.optlong(0);
-                    try {
-                        hid_.click(mask, duration);
-                    } catch (IOException | InterruptedException e) {
-                        throw new LuaError(e);
-                    }
-                    return NIL;
-                }
-            }
-
-            class move extends TwoArgFunction {
-
-                @Override
-                public LuaValue call(LuaValue arg1, LuaValue arg2) {
-                    byte dx = checkbyte(arg1.checkint());
-                    byte dy = checkbyte(arg2.checkint());
-                    try {
-                        hid_.move(dx, dy);
-                    } catch (IOException e) {
-                        throw new LuaError(e);
-                    }
-                    return NIL;
-                }
-            }
-
-            class scroll extends OneArgFunction {
-
-                @Override
-                public LuaValue call(LuaValue arg) {
-                    byte offset = checkbyte(arg.checkint());
-                    try {
-                        hid_.scroll(offset);
-                    } catch (IOException e) {
-                        throw new LuaError(e);
-                    }
-                    return NIL;
-                }
-            }
-        }
-
-        class storage extends ZeroArgFunction {
-            public storage(int id) {
-
-            }
-
-            @Override
-            public LuaValue call() {
-                return NIL;
-            }
+    public LuaValue mouse(int id) {
+        try {
+            LuaHidMouse hid = new LuaHidMouse(fs_, "/dev/hidg" + id);
+            devHandles_.add(hid);
+            return CoerceJavaToLua.coerce(hid);
+        } catch (IOException e) {
+            throw new LuaError(e);
         }
     }
 

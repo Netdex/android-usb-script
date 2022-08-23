@@ -19,5 +19,5 @@ while luausb.state() == "configured" do
     dx, dy = math.floor(ax - x), math.floor(ay - y)
     x, y = x + dx, y + dy
     t = t + s
-    ms1.move(dx, dy)
+    ms1:move(dx, dy)
 end

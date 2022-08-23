@@ -99,7 +99,7 @@ public class FileSystem {
         return ShellUtils.fastCmd(String.format("getprop %s", prop));
     }
 
-    public FileSystemManager getRemoteFs() {
+    public FileSystemManager get() {
         return remoteFs_;
     }
 }
