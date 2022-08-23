@@ -15,8 +15,8 @@ while true do
     end
 
     print("running")
-    -- wait 1 second for things to settle down
-    wait(1000)
+    -- wait 2 second for things to settle down
+    wait(2000)
 
     kb.chord(MOD_LSUPER, KEY_R)
     wait(1000)

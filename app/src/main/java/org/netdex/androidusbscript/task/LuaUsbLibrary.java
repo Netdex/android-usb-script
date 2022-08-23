@@ -243,7 +243,7 @@ public class LuaUsbLibrary implements AutoCloseable {
             public LuaValue call() {
                 LuaValue library = tableOf();
                 for (LuaFunction f : new LuaFunction[]{
-                        new raw(), new chord(), new press(), new string()}) {
+                        new raw(), new chord(), new press(), new string(), new debug()}) {
                     library.set(f.name(), f);
                 }
                 return library;
@@ -314,7 +314,6 @@ public class LuaUsbLibrary implements AutoCloseable {
             }
 
             class string extends TwoArgFunction {
-
                 @Override
                 public LuaValue call(LuaValue arg1, LuaValue arg2) {
                     String string = arg1.checkjstring();
@@ -325,6 +324,17 @@ public class LuaUsbLibrary implements AutoCloseable {
                         throw new LuaError(e);
                     }
                     return NIL;
+                }
+            }
+
+            class debug extends ZeroArgFunction {
+                @Override
+                public LuaValue call() {
+                    try {
+                        return valueOf(hid_.available());
+                    } catch (IOException e) {
+                        throw new LuaError(e);
+                    }
                 }
             }
         }
