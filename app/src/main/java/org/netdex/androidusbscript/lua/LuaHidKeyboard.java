@@ -6,6 +6,7 @@ import org.luaj.vm2.lib.jse.CoerceJavaToLua;
 import org.netdex.androidusbscript.function.DeviceStream;
 import org.netdex.androidusbscript.util.FileSystem;
 import org.netdex.androidusbscript.function.HidInput.Keyboard.Mod;
+import org.netdex.androidusbscript.util.Util;
 
 import static org.luaj.vm2.LuaValue.NONE;
 import static org.netdex.androidusbscript.MainActivity.TAG;
@@ -36,7 +37,7 @@ public class LuaHidKeyboard extends DeviceStream {
      *
      * @param keys HID keyboard bytes
      */
-    public void raw(byte... keys) throws IOException, InterruptedException {
+    private void raw(byte... keys) throws IOException, InterruptedException {
         byte[] buffer = new byte[8];
         if (keys.length > 7)
             throw new IllegalArgumentException("Too many parameters in HID report");
@@ -45,15 +46,31 @@ public class LuaHidKeyboard extends DeviceStream {
         this.write(buffer);
     }
 
-    public void press(byte... keys) throws IOException, InterruptedException {
-        raw(keys);
-        raw();
-    }
+    public static VarArgFunction press = new VarArgFunction() {
+        @Override
+        public Varargs invoke(Varargs args) {
+            args.argcheck(args.narg() >= 2, 0, "at least 2 args required");
+            LuaHidKeyboard hid = (LuaHidKeyboard) args.arg1().checkuserdata();
+
+            byte[] a = new byte[args.narg()];
+            a[0] = MOD_NONE.code;
+            for (int i = 2; i <= args.narg(); ++i) {
+                a[i - 1] = checkbyte(args.arg(i).checkint());
+            }
+            try {
+                hid.raw(a);
+                hid.raw();
+            } catch (IOException | InterruptedException e) {
+                throw new LuaError(e);
+            }
+            return NONE;
+        }
+    };
 
     public static VarArgFunction chord = new VarArgFunction() {
         @Override
         public Varargs invoke(Varargs args) {
-            args.argcheck(args.narg() >= 3, 0, "at least 2 args required");
+            args.argcheck(args.narg() >= 3, 0, "at least 3 args required");
             LuaHidKeyboard hid = (LuaHidKeyboard) args.arg1().checkuserdata();
 
             byte mask;
@@ -73,7 +90,8 @@ public class LuaHidKeyboard extends DeviceStream {
                 a[i - 1] = checkbyte(args.arg(i).checkint());
             }
             try {
-                hid.press(a);
+                hid.raw(a);
+                hid.raw();
             } catch (IOException | InterruptedException e) {
                 throw new LuaError(e);
             }

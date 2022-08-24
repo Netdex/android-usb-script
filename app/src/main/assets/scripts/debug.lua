@@ -1,3 +1,4 @@
+require('common')
 local inspect = require('inspect')
 
 kb = luausb.create({ id = 0, type = "keyboard" })

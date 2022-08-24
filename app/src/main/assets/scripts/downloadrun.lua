@@ -3,6 +3,8 @@
 --- directly translated from the Java version in previous builds
 ---
 
+require('common')
+
 kb = luausb.create({ id = 0, type = "keyboard" })
 
 local file = prompt{
@@ -22,8 +24,8 @@ while true do
         wait(1000)
     end
 
+    wait_for_detect(kb)
     print("running")
-    wait(1000)
 
     print("opening powershell, runAs=" .. tostring(runAs))
     if runAs then

@@ -24,7 +24,7 @@ public class LuaHidMouse extends DeviceStream implements Closeable {
      *
      * @param offset HID mouse bytes
      */
-    public void raw(byte... offset) throws IOException, InterruptedException {
+    private void raw(byte... offset) throws IOException, InterruptedException {
         byte[] buffer = new byte[4];
         if (offset.length > 4)
             throw new IllegalArgumentException("Too many parameters in HID report");

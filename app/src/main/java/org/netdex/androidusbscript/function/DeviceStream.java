@@ -8,6 +8,7 @@ import android.util.Log;
 import com.topjohnwu.superuser.io.SuFile;
 
 import org.netdex.androidusbscript.util.FileSystem;
+import org.netdex.androidusbscript.util.Util;
 
 import java.io.Closeable;
 import java.io.FileInputStream;
@@ -74,7 +75,7 @@ public abstract class DeviceStream implements Closeable {
             if (fs_.exists(devicePath_)) {
                 return true;
             }
-            Thread.sleep(100);
+            Thread.sleep(500);
         }
         return false;
     }

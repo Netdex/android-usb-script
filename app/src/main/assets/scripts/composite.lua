@@ -2,6 +2,9 @@
 --- Composite device composed of two keyboards
 ---
 ---
+
+require('common')
+
 kb1, kb2 = luausb.create({ type = "keyboard", id = 0 }, { type = "keyboard", id = 1 })
 
 while true do
@@ -12,8 +15,8 @@ while true do
         wait(1000)
     end
 
+    wait_for_detect(kb)
     print("running")
-    wait(1000)
 
     -- send a string from keyboard 1
     kb1:string("kb1")

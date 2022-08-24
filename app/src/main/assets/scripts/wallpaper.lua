@@ -2,6 +2,8 @@
 --- Change Windows 10 desktop wallpaper
 ---
 
+require('common')
+
 kb = luausb.create({ id = 0, type = "keyboard" })
 
 local file = prompt{
@@ -14,12 +16,10 @@ while true do
     print("idle")
 
     -- poll until usb plugged in
-    while luausb.state() == "not attached" do
-        wait(1000)
-    end
+    wait_for_state('configured')
 
+    wait_for_detect(kb)
     print("running")
-    wait(1000)
 
     kb:chord(MOD_LSUPER, KEY_R)
     wait(2000)
@@ -39,8 +39,6 @@ while true do
             "exit\n")
 
     print("done")
-    -- poll until usb unplugged
-    while luausb.state() == "configured" do
-        wait(1000)
-    end
+
+    wait_for_state('not attached')
 end

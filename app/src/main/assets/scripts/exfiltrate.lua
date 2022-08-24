@@ -13,13 +13,10 @@ while true do
     print("idle")
 
     -- poll until usb plugged in
-    while luausb.state() == "not attached" do
-        wait(1000)
-    end
-
-    print("running")
+    wait_for_state('configured')
 
     wait_for_detect(kb)
+    print("running")
 
     kb:chord(MOD_LSUPER, KEY_R)
     wait(1000)
@@ -29,10 +26,9 @@ while true do
               .. "computername'.txt'\"\n")
 
     print("done")
-    -- poll until usb unplugged
-    while luausb.state() == "configured" do
-        wait(1000)
-    end
+    done(kb)
+    wait_for_state('not attached')
+
     print("disconnected")
 end
 
