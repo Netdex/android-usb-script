@@ -121,7 +121,7 @@ public class UsbGadget {
 
     public boolean isSupported(FileSystem fs) {
         return fs.exists(configFsPath_)
-                && fs.getSystemProp("sys.usb.configfs").equals("1");
+                && Integer.parseInt(fs.getSystemProp("sys.usb.configfs")) >= 1;
     }
 
     public String getGadgetPath(String gadgetName) {

@@ -8,12 +8,12 @@ import android.os.RemoteException;
 import com.topjohnwu.superuser.nio.FileSystemManager;
 
 public class RootServiceConnection implements ServiceConnection {
-    private FileSystemManager remoteFS_ = null;
+    private FileSystemManager remoteFs_ = null;
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
         try {
-            remoteFS_ = FileSystemManager.getRemote(service);
+            remoteFs_ = FileSystemManager.getRemote(service);
         } catch (RemoteException e) {
             e.printStackTrace();
         }
@@ -21,10 +21,10 @@ public class RootServiceConnection implements ServiceConnection {
 
     @Override
     public void onServiceDisconnected(ComponentName name) {
-        remoteFS_ = null;
+        remoteFs_ = null;
     }
 
-    public FileSystemManager getRemoteFS() {
-        return remoteFS_;
+    public FileSystemManager getRemoteFs() {
+        return remoteFs_;
     }
 }

@@ -25,7 +25,6 @@ import org.netdex.androidusbscript.util.FileSystem;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 public class LuaUsbService extends Service {
@@ -62,7 +61,7 @@ public class LuaUsbService extends Service {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
                 super.onServiceConnected(name, service);
-                fs_ = new FileSystem(this.getRemoteFS());
+                fs_ = new FileSystem(this.getRemoteFs());
             }
         };
     }
