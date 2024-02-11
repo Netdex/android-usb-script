@@ -1,5 +1,6 @@
 # Android USB Script
 [![Android CI](https://github.com/Netdex/android-usb-script/actions/workflows/android.yml/badge.svg)](https://github.com/Netdex/android-usb-script/actions/workflows/android.yml)
+[![IzzyOnAndroid](https://img.shields.io/endpoint?url=https://apt.izzysoft.de/fdroid/api/v1/shield/org.netdex.androidusbscript/)](https://apt.izzysoft.de/fdroid/index/apk/org.netdex.androidusbscript/)
 
 **Use at your own risk. For educational purposes only.**
 
