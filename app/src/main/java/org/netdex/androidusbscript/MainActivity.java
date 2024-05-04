@@ -2,9 +2,11 @@ package org.netdex.androidusbscript;
 
 import android.app.Activity;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -23,6 +25,7 @@ import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.os.HandlerCompat;
 
@@ -69,7 +72,11 @@ public class MainActivity extends AppCompatActivity {
 
         notificationBroadcastReceiver_ = new NotificationBroadcastReceiver();
         IntentFilter filter = new IntentFilter(NotificationBroadcastReceiver.ACTION_STOP);
-        registerReceiver(notificationBroadcastReceiver_, filter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(notificationBroadcastReceiver_, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(notificationBroadcastReceiver_, filter);
+        }
 
         LuaIOBridge dialogIO = new LuaIOBridge() {
             @Override

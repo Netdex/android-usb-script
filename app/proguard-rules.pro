@@ -17,4 +17,3 @@
 #}
 
 # This is generated automatically by the Android Gradle plugin.
--dontwarn javax.script.ScriptEngineFactory

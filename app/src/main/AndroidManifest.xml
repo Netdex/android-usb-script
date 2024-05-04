@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
@@ -27,7 +28,8 @@
 
         <service
             android:name="org.netdex.androidusbscript.service.LuaUsbService"
-            android:enabled="true" />
+            android:enabled="true"
+            android:foregroundServiceType="specialUse"/>
     </application>
 
 </manifest>

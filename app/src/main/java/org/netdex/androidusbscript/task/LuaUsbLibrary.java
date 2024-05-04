@@ -216,6 +216,7 @@ public class LuaUsbLibrary implements AutoCloseable {
                 } catch (IOException e) {
                     throw new LuaError(e);
                 }
+//                return valueOf("unknown");
             }
         }
     }

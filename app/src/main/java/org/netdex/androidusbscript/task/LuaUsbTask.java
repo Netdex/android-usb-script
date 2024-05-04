@@ -57,6 +57,7 @@ public class LuaUsbTask implements Closeable {
                     if (e.getCause() instanceof IOException) {
                         throw (IOException) e.getCause();
                     } else if (!(e.getCause() instanceof InterruptedException)) {
+                        e.printStackTrace();
                         ioBridge_.onLogMessage(getExceptionMessage(e));
                     }
                 } finally {
