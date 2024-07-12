@@ -4,6 +4,9 @@ import org.netdex.androidusbscript.util.FileSystem;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Arrays;
+
+import timber.log.Timber;
 
 /**
  * https://www.kernel.org/doc/Documentation/usb/gadget_configfs.txt
@@ -34,20 +37,22 @@ public abstract class UsbGadgetFunction {
     }
 
     protected void create(FileSystem fs, String gadgetPath) throws IOException {
-        String functionDir = getFunctionDir();
+        String functionDir = getName();
         String functionPath = Paths.get(gadgetPath, "functions", functionDir).toString();
         if (fs.exists(functionPath)) {
-            throw new IllegalStateException(String.format("Function path \"%s\" already exists", functionPath));
+            throw new IllegalStateException(String.format("Function path '%s' already exists", functionPath));
         }
+        Timber.d("Creating USB function '%s'", functionDir);
         fs.mkdir(functionPath);
     }
 
     protected void configure(FileSystem fs, String gadgetPath, String configDir) throws IOException {
-        String functionDir = getFunctionDir();
+        String functionDir = getName();
         String functionPath = Paths.get(gadgetPath, "functions", functionDir).toString();
         if (!fs.exists(functionPath)) {
-            throw new IllegalStateException(String.format("Function path \"%s\" does not exist", functionPath));
+            throw new IllegalStateException(String.format("Function path '%s' does not exist", functionPath));
         }
+        Timber.d("Configuring USB function '%s'", functionDir);
         fs.ln(Paths.get(gadgetPath, "configs", configDir, functionDir).toString(), functionPath);
     }
 
@@ -57,22 +62,24 @@ public abstract class UsbGadgetFunction {
     }
 
     protected void destroy(FileSystem fs, String gadgetPath) throws IOException {
-        String functionDir = getFunctionDir();
+        String functionDir = getName();
         String functionPath = Paths.get(gadgetPath, "functions", functionDir).toString();
         if (!fs.exists(functionPath)) {
-            throw new IllegalStateException(String.format("Function path \"%s\" does not exist", functionPath));
+            throw new IllegalStateException(String.format("Function path '%s' does not exist", functionPath));
         }
+        Timber.d("Destroying USB function '%s'", functionDir);
         fs.delete(functionPath);
     }
 
     protected void unconfigure(FileSystem fs, String gadgetPath, String configDir) throws IOException {
-        String functionDir = getFunctionDir();
-        String linkPath = Paths.get(gadgetPath, "configs", configDir, functionDir).toString();
-        if (!fs.exists(linkPath)) {
-            throw new IllegalStateException(String.format("Function symlink \"%s\" does not exist", linkPath));
+        String functionDir = getName();
+        String functionPath = Paths.get(gadgetPath, "configs", configDir, functionDir).toString();
+        if (!fs.exists(functionPath)) {
+            throw new IllegalStateException(String.format("Function symlink '%s' does not exist", functionPath));
         }
-        fs.delete(linkPath);
+        Timber.d("Unconfiguring USB function '%s'", functionDir);
+        fs.delete(functionPath);
     }
 
-    public abstract String getFunctionDir();
+    public abstract String getName();
 }

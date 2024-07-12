@@ -5,10 +5,10 @@
     tools:context="org.netdex.androidusbscript.MainActivity">
     <item
         android:id="@+id/action_asset"
-        android:title="Select Asset"
+        android:title="@string/select_asset"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_script"
-        android:title="Load Script"
+        android:title="@string/load_script"
         app:showAsAction="never" />
 </menu>

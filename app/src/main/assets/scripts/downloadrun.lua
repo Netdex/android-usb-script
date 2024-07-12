@@ -5,7 +5,7 @@
 
 require('common')
 
-kb = luausb.create({ id = 0, type = "keyboard" })
+kb = luausb.create({ type = "keyboard" })
 
 local file = prompt{
     message="Enter the URL for the file to download.",
@@ -20,10 +20,7 @@ while true do
     print("idle")
 
     -- poll until usb plugged in
-    while luausb.state() == "not attached" do
-        wait(1000)
-    end
-
+    wait_for_state("configured")
     wait_for_detect(kb)
     print("running")
 
@@ -58,10 +55,8 @@ while true do
     )
 
     print("done")
-    -- poll until usb unplugged
-    while luausb.state() == "configured" do
-        wait(1000)
-    end
+    wait_for_state("not attached")
+
     print("disconnected")
 end
 

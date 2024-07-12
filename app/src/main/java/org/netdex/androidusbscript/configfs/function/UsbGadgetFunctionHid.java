@@ -29,7 +29,7 @@ public class UsbGadgetFunctionHid extends UsbGadgetFunction {
     }
 
     @Override
-    public String getFunctionDir() {
+    public String getName() {
         return "hid.usb" + id_;
     }
 
@@ -38,10 +38,10 @@ public class UsbGadgetFunctionHid extends UsbGadgetFunction {
         super.create(fs, gadgetPath);
 
         Parameters params = (Parameters) this.params_;
-        String functionDir = getFunctionDir();
-        fs.fwrite(params.protocol, Paths.get(gadgetPath, "functions", functionDir, "protocol").toString());
-        fs.fwrite(params.subclass, Paths.get(gadgetPath, "functions", functionDir, "subclass").toString());
-        fs.fwrite(params.reportLength, Paths.get(gadgetPath, "functions", functionDir, "report_length").toString());
-        fs.fwrite(params.descriptor, Paths.get(gadgetPath, "functions", functionDir, "report_desc").toString());
+        String functionDir = getName();
+        fs.write(params.protocol, Paths.get(gadgetPath, "functions", functionDir, "protocol").toString());
+        fs.write(params.subclass, Paths.get(gadgetPath, "functions", functionDir, "subclass").toString());
+        fs.write(params.reportLength, Paths.get(gadgetPath, "functions", functionDir, "report_length").toString());
+        fs.write(params.descriptor, Paths.get(gadgetPath, "functions", functionDir, "report_desc").toString());
     }
 }

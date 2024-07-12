@@ -1,14 +1,13 @@
 ---
 --- Draw some cool circles using the mouse
 ---
+require('common')
 
-ms1 = luausb.create({ type = "mouse", id = 0 })
+ms1 = luausb.create({ type = "mouse" })
 
 while true do
     -- poll until usb plugged in
-    while luausb.state() == "not attached" do
-        wait(1000)
-    end
+    wait_for_state("configured")
 
     t = 0
     s = 0.05

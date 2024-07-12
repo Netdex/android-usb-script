@@ -1,21 +1,16 @@
 package org.netdex.androidusbscript.function;
 
-import static org.netdex.androidusbscript.MainActivity.TAG;
-
-import android.annotation.SuppressLint;
-import android.util.Log;
-
 import com.topjohnwu.superuser.io.SuFile;
 
 import org.netdex.androidusbscript.util.FileSystem;
 import org.netdex.androidusbscript.util.Util;
 
 import java.io.Closeable;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+
+import timber.log.Timber;
 
 public abstract class DeviceStream implements Closeable {
     private final FileSystem fs_;
@@ -30,13 +25,13 @@ public abstract class DeviceStream implements Closeable {
     }
 
     protected void write(byte[] b) throws IOException, InterruptedException {
-//        Log.d(TAG, String.format("write %s > %s", Util.bytesToHex(b), devicePath_));
+//        Timber.v("write(%s) < %s", devicePath_, Util.bytesToHex(b));
         this.getOutputStream().write(b);
     }
 
     protected int read(byte[] b) throws IOException, InterruptedException {
         int ret = this.getInputStream().read(b);
-//        Log.d(TAG, String.format("read %s < %s", Util.bytesToHex(b), devicePath_));
+//        Timber.v("read(%s) > %s", devicePath_, Util.bytesToHex(b));
         return ret;
     }
 
@@ -53,8 +48,9 @@ public abstract class DeviceStream implements Closeable {
     protected OutputStream getOutputStream() throws IOException, InterruptedException {
         if (os_ == null) {
             if (!waitForDevice())
-                throw new RuntimeException(String.format("Device \"%s\" does not exist", devicePath_));
-            os_ = fs_.fopen_w(devicePath_);
+                throw new RuntimeException(String.format("Device '%s' does not exist", devicePath_));
+            Timber.d("Opening output stream for device '%s'", devicePath_);
+            os_ = fs_.open_w(devicePath_);
         }
         return os_;
     }
@@ -65,6 +61,7 @@ public abstract class DeviceStream implements Closeable {
                 throw new RuntimeException(String.format("Device \"%s\" does not exist", devicePath_));
             // MITIGATION: Using RootService via IPC causes my phone to kernel panic when reading
             // /dev/hidgX. Though it's not recommended, using SuFile here seems to work well enough.
+            Timber.d("Opening input stream for device '%s'", devicePath_);
             is_ = SuFile.open(devicePath_).newInputStream();
         }
         return is_;
@@ -82,7 +79,7 @@ public abstract class DeviceStream implements Closeable {
 
     @Override
     public void close() throws IOException {
-        Log.v(TAG, "DeviceStream.close()");
+        Timber.d("Closing device stream '%s'", devicePath_);
         if (os_ != null) {
             os_.close();
             os_ = null;

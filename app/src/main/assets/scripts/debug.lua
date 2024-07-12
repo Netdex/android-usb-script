@@ -1,7 +1,7 @@
 require('common')
 local inspect = require('inspect')
 
-kb = luausb.create({ id = 0, type = "keyboard" })
+kb = luausb.create({ type = "keyboard" })
 
 wait(1000)
 

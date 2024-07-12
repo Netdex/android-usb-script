@@ -5,18 +5,19 @@
 
 require('common')
 
-kb = luausb.create({ id = 0, type = "keyboard"}, {id = 0, type = "storage" })
+local LABEL = "COMPOSITE"
 
-local LABEL = "COMPOSITE" -- label of the drive (as assigned by you)
+kb = luausb.create({ type = "keyboard"}, { type = "storage", label = LABEL })
 
 while true do
     print("idle")
 
     -- poll until usb plugged in
     wait_for_state('configured')
-
     wait_for_detect(kb)
+
     print("running")
+    wait(2000) -- wait in case explorer pops up
 
     kb:chord(MOD_LSUPER, KEY_R)
     wait(1000)
@@ -26,8 +27,7 @@ while true do
               .. "computername'.txt'\"\n")
 
     print("done")
-    done(kb)
-    wait_for_state('not attached')
+    wait_for_state("not attached")
 
     print("disconnected")
 end

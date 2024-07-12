@@ -1,25 +1,18 @@
 package org.netdex.androidusbscript.lua;
 
-import org.luaj.vm2.*;
-import org.luaj.vm2.lib.*;
-import org.luaj.vm2.lib.jse.CoerceJavaToLua;
-import org.netdex.androidusbscript.function.DeviceStream;
-import org.netdex.androidusbscript.util.FileSystem;
-import org.netdex.androidusbscript.function.HidInput.Keyboard.Mod;
-import org.netdex.androidusbscript.util.Util;
-
-import static org.luaj.vm2.LuaValue.NONE;
-import static org.netdex.androidusbscript.MainActivity.TAG;
-import static org.netdex.androidusbscript.function.HidInput.Keyboard.Key;
-
-import static org.netdex.androidusbscript.function.HidInput.Keyboard.Mod.*;
-import static org.netdex.androidusbscript.function.HidInput.Keyboard.Key.*;
+import static org.netdex.androidusbscript.function.HidInput.Keyboard.Mod.MOD_LSHIFT;
+import static org.netdex.androidusbscript.function.HidInput.Keyboard.Mod.MOD_NONE;
 import static org.netdex.androidusbscript.task.LuaUsbLibrary.checkbyte;
 
-import android.util.Log;
+import org.luaj.vm2.LuaError;
+import org.luaj.vm2.LuaTable;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
+import org.luaj.vm2.lib.VarArgFunction;
+import org.netdex.androidusbscript.function.DeviceStream;
+import org.netdex.androidusbscript.util.FileSystem;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 public class LuaHidKeyboard extends DeviceStream {
 
@@ -100,7 +93,7 @@ public class LuaHidKeyboard extends DeviceStream {
     };
 
     public LuaValue read_lock() throws IOException, InterruptedException {
-        if (available() < 1)
+        if (available() == 0)
             return LuaValue.NIL;
 
         int val = read();

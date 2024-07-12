@@ -15,19 +15,18 @@ end
 
 function wait_for_state(state)
     while luausb.state() ~= state do
-        wait(100)
+        wait(1000)
     end
 end
 
 -- make it really obvious when a script is done running
-function done(kb)
+function flash(kb)
     kb:press(KEY_NUMLOCK)
 
     wait(100)
     local lock
     while true do
         local val = kb:read_lock()
-        print(val)
         if val == nil then break end
         lock = val
     end
@@ -37,8 +36,11 @@ function done(kb)
     if lock.caps_lock then kb:press(KEY_CAPSLOCK) end
     if lock.scroll_lock then kb:press(KEY_SCROLLLOCK) end
 
-    while true do
+    local state = luausb.state()
+    while luausb.state() == state do
         kb:press(KEY_NUMLOCK, KEY_CAPSLOCK, KEY_SCROLLLOCK)
-        wait(500)
+        wait(50)
+        kb:press(KEY_NUMLOCK, KEY_CAPSLOCK, KEY_SCROLLLOCK)
+        wait(950)
     end
 end

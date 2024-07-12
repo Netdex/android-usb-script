@@ -1,9 +1,5 @@
 package org.netdex.androidusbscript.task;
 
-import static org.netdex.androidusbscript.MainActivity.TAG;
-
-import android.util.Log;
-
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
@@ -13,9 +9,9 @@ import org.netdex.androidusbscript.util.FileSystem;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.StringReader;
-import java.io.StringWriter;
+
+import timber.log.Timber;
 
 
 /**
@@ -54,9 +50,7 @@ public class LuaUsbTask implements Closeable {
                     LuaValue luaChunk_ = globals.load(src_);
                     luaChunk_.call();
                 } catch (LuaError e) {
-                    if (e.getCause() instanceof IOException) {
-                        throw (IOException) e.getCause();
-                    } else if (!(e.getCause() instanceof InterruptedException)) {
+                    if (!(e.getCause() instanceof InterruptedException)) {
                         e.printStackTrace();
                         ioBridge_.onLogMessage(getExceptionMessage(e));
                     }
@@ -73,11 +67,11 @@ public class LuaUsbTask implements Closeable {
                     if (usbGadget.isBound(fs)) {
                         usbGadget.unbind(fs);
                     } else {
-                        Log.w(TAG, "USB gadget is not bound on task end");
+                        Timber.w("USB gadget is not bound on task end");
                     }
                     usbGadget.remove(fs);
                 } else {
-                    Log.w(TAG, "USB gadget is not created on task end");
+                    Timber.w("USB gadget is not created on task end");
                 }
             }
         } catch (IOException e) {

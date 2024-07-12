@@ -1,4 +1,4 @@
-kb = luausb.create({ id = 0, type = "keyboard" })
+kb = luausb.create({ type = "keyboard" })
 
 while true do
     wait(1000)

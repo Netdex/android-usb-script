@@ -1,9 +1,5 @@
 package org.netdex.androidusbscript.task;
 
-import static org.netdex.androidusbscript.MainActivity.TAG;
-
-import android.util.Log;
-
 import org.luaj.vm2.*;
 import org.luaj.vm2.lib.*;
 import org.luaj.vm2.lib.jse.CoerceJavaToLua;
@@ -18,6 +14,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import timber.log.Timber;
 
 
 /**
@@ -55,7 +53,7 @@ public class LuaUsbLibrary implements AutoCloseable {
 
     @Override
     public void close() throws IOException {
-        Log.v(TAG, "LuaUsbLibrary.close()");
+        Timber.d("Closing all device handles");
         for (Closeable hndl : devHandles_) {
             hndl.close();
         }
@@ -132,7 +130,7 @@ public class LuaUsbLibrary implements AutoCloseable {
              *             A configuration is a table which must have at least the following
              *             properties:
              *             <p>
-             *             type: string = (keyboard|storage)
+             *             type: string = (keyboard|mouse|storage)
              *             id: integer = [n >= 0]
              *             <p>
              *             Depending on type, the configuration can have additional properties:
@@ -146,65 +144,94 @@ public class LuaUsbLibrary implements AutoCloseable {
             @Override
             public Varargs invoke(Varargs args) {
                 int numDevices = args.narg();
-                LuaValue[] devices = new LuaValue[numDevices];
+                UsbGadgetFunction[] functions = new UsbGadgetFunction[numDevices];
                 for (int i = 1; i <= numDevices; ++i) {
                     LuaTable config = args.arg(i).checktable();
                     String type = config.get("type").checkjstring();
-                    int id = config.get("id").checkint();
+                    int id = i - 1;
 
-                    LuaValue device;
-                    switch (type) {
-                        case "keyboard": {
-                            UsbGadgetFunctionHid fcnHid = new UsbGadgetFunctionHid(
-                                    id, HidDescriptor.KEYBOARD.getParameters());
-                            usbGadget_.addFunction(fcnHid);
-                            device = keyboard(id);
-                            break;
-                        }
-                        case "mouse": {
-                            UsbGadgetFunctionHid fcnHid = new UsbGadgetFunctionHid(
-                                    id, HidDescriptor.MOUSE.getParameters());
-                            usbGadget_.addFunction(fcnHid);
-                            device = mouse(id);
-                            break;
-                        }
-                        case "storage":
+                    UsbGadgetFunction function = switch (type) {
+                        case "keyboard" ->
+                                new UsbGadgetFunctionHid(id, HidDescriptor.KEYBOARD.getParameters());
+                        case "mouse" ->
+                                new UsbGadgetFunctionHid(id, HidDescriptor.MOUSE.getParameters());
+                        case "storage" -> {
                             String file = config.get("file").optjstring("/data/local/tmp/mass_storage-lun0.img");
                             boolean ro = config.get("ro").optboolean(false);
                             long size = config.get("size").optlong(256);
-
-                            UsbGadgetFunctionMassStorage.Parameters storParam =
-                                    new UsbGadgetFunctionMassStorage.Parameters(
-                                            file, ro, true, false, false, true, size);
-                            UsbGadgetFunctionMassStorage fcnStor = new UsbGadgetFunctionMassStorage(
-                                    id, storParam);
-                            usbGadget_.addFunction(fcnStor);
-                            device = NIL;
-                            break;
-                        default:
-                            throw new LuaError(String.format("Invalid function type \"%s\"", type));
-                    }
-                    devices[i - 1] = device;
+                            String label = config.get("label").optjstring("Android USB Script");
+                            UsbGadgetFunctionMassStorage.Parameters storParam = new UsbGadgetFunctionMassStorage.Parameters(file, ro, true, false, false, true, size, label);
+                            yield new UsbGadgetFunctionMassStorage(id, storParam);
+                        }
+                        default ->
+                                throw new LuaError(String.format("Invalid function type '%s'", type));
+                    };
+                    usbGadget_.addFunction(function);
+                    functions[id] = function;
                 }
 
                 // MITIGATION: Windows seems to memoize usb configurations by serial number
                 // (not across reboots). This causes undefined behavior when the configuration
                 // changes. Generate a serial number based on the configuration.
-                UsbGadget.Parameters gadgetParameters = new UsbGadget.Parameters(
-                        "The Linux Foundation",
-                        usbGadget_.serial(),
-                        "0x1d6b",
-                        "0x0105",
-                        "FunctionFS Gadget",
-                        "Composite");
+                UsbGadget.Parameters gadgetParameters = new UsbGadget.Parameters("The Linux Foundation", usbGadget_.serial(), "0x1d6b", "0x0105", "FunctionFS Gadget", "Composite");
+
                 try {
                     usbGadget_.add(fs_, gadgetParameters);
                     usbGadget_.bind(fs_);
+
+                    LuaValue[] devices = new LuaValue[numDevices];
+                    for (int i = 1; i <= numDevices; ++i) {
+                        LuaTable config = args.arg(i).checktable();
+                        String type = config.get("type").checkjstring();
+                        int id = i - 1;
+
+                        var function = functions[id];
+
+                        // https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=ed6fe1f50f0c0fdea674dfa739af50011034bdfa
+                        LuaValue device = switch (type) {
+                            case "keyboard" -> {
+                                var dev = usbGadget_.getAttribute(fs_, function.getName(), "dev");
+                                int minor = Integer.parseInt(dev.split(":")[1]);
+                                Timber.d("USB function '%s' at device number %s", function.getName(), dev);
+                                yield keyboard(minor);
+                            }
+                            case "mouse" -> {
+                                var dev = usbGadget_.getAttribute(fs_, function.getName(), "dev");
+                                int minor = Integer.parseInt(dev.split(":")[1]);
+                                Timber.d("USB function '%s' at device number %s", function.getName(), dev);
+                                yield mouse(minor);
+                            }
+                            case "storage" -> NIL;
+                            default ->
+                                    throw new LuaError(String.format("Invalid function type '%s'", type));
+                        };
+                        devices[i - 1] = device;
+                    }
+
+                    return LuaValue.varargsOf(devices);
                 } catch (IOException e) {
                     throw new LuaError(e);
                 }
+            }
 
-                return LuaValue.varargsOf(devices);
+            public LuaValue keyboard(int minor) {
+                try {
+                    LuaHidKeyboard hid = new LuaHidKeyboard(fs_, "/dev/hidg" + minor);
+                    devHandles_.add(hid);
+                    return CoerceJavaToLua.coerce(hid);
+                } catch (IOException e) {
+                    throw new LuaError(e);
+                }
+            }
+
+            public LuaValue mouse(int minor) {
+                try {
+                    LuaHidMouse hid = new LuaHidMouse(fs_, "/dev/hidg" + minor);
+                    devHandles_.add(hid);
+                    return CoerceJavaToLua.coerce(hid);
+                } catch (IOException e) {
+                    throw new LuaError(e);
+                }
             }
         }
 
@@ -218,27 +245,6 @@ public class LuaUsbLibrary implements AutoCloseable {
                 }
 //                return valueOf("unknown");
             }
-        }
-    }
-
-    public LuaValue keyboard(int id) {
-        try {
-            LuaHidKeyboard hid = new LuaHidKeyboard(fs_, "/dev/hidg" + id);
-            devHandles_.add(hid);
-            return CoerceJavaToLua.coerce(hid);
-        } catch (IOException e) {
-            throw new LuaError(e);
-        }
-    }
-
-
-    public LuaValue mouse(int id) {
-        try {
-            LuaHidMouse hid = new LuaHidMouse(fs_, "/dev/hidg" + id);
-            devHandles_.add(hid);
-            return CoerceJavaToLua.coerce(hid);
-        } catch (IOException e) {
-            throw new LuaError(e);
         }
     }
 

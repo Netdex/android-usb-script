@@ -5,17 +5,13 @@
 
 require('common')
 
-kb1, kb2 = luausb.create({ type = "keyboard", id = 0 }, { type = "keyboard", id = 1 })
+kb1, kb2 = luausb.create({ type = "keyboard" }, { type = "keyboard" })
 
 while true do
     print("idle")
 
-    -- poll until usb plugged in
-    while luausb.state() == "not attached" do
-        wait(1000)
-    end
-
-    wait_for_detect(kb)
+    wait_for_state("configured")
+    wait_for_detect(kb1)
     print("running")
 
     -- send a string from keyboard 1
@@ -25,11 +21,7 @@ while true do
     kb2:string("kb2")
 
     print("done")
-
-    -- poll until usb unplugged
-    while luausb.state() == "configured" do
-        wait(1000)
-    end
+    wait_for_state("not attached")
 
     print("disconnected")
 

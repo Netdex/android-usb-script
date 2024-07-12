@@ -1,15 +1,14 @@
 package org.netdex.androidusbscript.configfs;
 
-import static org.netdex.androidusbscript.MainActivity.TAG;
-
-import android.util.Log;
-
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
 import org.netdex.androidusbscript.configfs.function.UsbGadgetFunction;
 import org.netdex.androidusbscript.util.FileSystem;
+
+
+import timber.log.Timber;
 
 public class UsbGadget {
     public static class Parameters {
@@ -50,7 +49,7 @@ public class UsbGadget {
     }
 
     public void add(FileSystem fs, Parameters params) throws IOException {
-        Log.v(TAG, "UsbGadget.create()");
+        Timber.d("Creating USB gadget '%s'", this.gadget_name_);
         String gadgetPath = getGadgetPath(gadget_name_);
         if (!isSupported(fs))
             throw new UnsupportedOperationException("Device does not support ConfigFS");
@@ -58,20 +57,20 @@ public class UsbGadget {
             throw new IllegalStateException("USB gadget already exists");
 
         fs.mkdir(gadgetPath);
-        fs.fwrite(params.idProduct, Paths.get(gadgetPath, "idProduct").toString());
-        fs.fwrite(params.idVendor, Paths.get(gadgetPath, "idVendor").toString());
-        fs.fwrite("239", Paths.get(gadgetPath, "bDeviceClass").toString());
-        fs.fwrite("0x02", Paths.get(gadgetPath, "bDeviceSubClass").toString());
-        fs.fwrite("0x01", Paths.get(gadgetPath, "bDeviceProtocol").toString());
+        fs.write(params.idProduct, Paths.get(gadgetPath, "idProduct").toString());
+        fs.write(params.idVendor, Paths.get(gadgetPath, "idVendor").toString());
+        fs.write("239", Paths.get(gadgetPath, "bDeviceClass").toString());
+        fs.write("0x02", Paths.get(gadgetPath, "bDeviceSubClass").toString());
+        fs.write("0x01", Paths.get(gadgetPath, "bDeviceProtocol").toString());
 
         fs.mkdir(Paths.get(gadgetPath, "strings/0x409").toString());
-        fs.fwrite(params.serial, Paths.get(gadgetPath, "strings/0x409/serialnumber").toString());
-        fs.fwrite(params.manufacturer, Paths.get(gadgetPath, "strings/0x409/manufacturer").toString());
-        fs.fwrite(params.product, Paths.get(gadgetPath, "strings/0x409/product").toString());
+        fs.write(params.serial, Paths.get(gadgetPath, "strings/0x409/serialnumber").toString());
+        fs.write(params.manufacturer, Paths.get(gadgetPath, "strings/0x409/manufacturer").toString());
+        fs.write(params.product, Paths.get(gadgetPath, "strings/0x409/product").toString());
 
         fs.mkdir(Paths.get(gadgetPath, "configs", CONFIG_DIR).toString());
         fs.mkdir(Paths.get(gadgetPath, "configs", CONFIG_DIR, "strings/0x409").toString());
-        fs.fwrite(params.configName, Paths.get(gadgetPath, "configs", CONFIG_DIR, "strings/0x409/configuration").toString());
+        fs.write(params.configName, Paths.get(gadgetPath, "configs", CONFIG_DIR, "strings/0x409/configuration").toString());
 
         for (UsbGadgetFunction function : this.functions_) {
             function.add(fs, gadgetPath, CONFIG_DIR);
@@ -79,7 +78,7 @@ public class UsbGadget {
     }
 
     public void bind(FileSystem fs) throws IOException {
-        Log.v(TAG, "UsbGadget.bind()");
+        Timber.d("Binding USB gadget '%s'", this.gadget_name_);
         if (!isCreated(fs))
             throw new IllegalStateException("USB gadget does not exist");
         if (isBound(fs))
@@ -88,23 +87,23 @@ public class UsbGadget {
         String udc = getSystemUDC(fs);
         if (udc.isEmpty()) throw new IllegalStateException("Could not determine system UDC");
 
-        fs.fwrite("", getUDCPath(SYSTEM_GADGET));
-        fs.fwrite(udc, getUDCPath(gadget_name_));
+        fs.write("", getUDCPath(SYSTEM_GADGET));
+        fs.write(udc, getUDCPath(gadget_name_));
     }
 
     public void unbind(FileSystem fs) throws IOException {
-        Log.v(TAG, "UsbGadget.unbind()");
+        Timber.d("Unbinding USB gadget '%s'", this.gadget_name_);
         if (!isCreated(fs))
             throw new IllegalStateException("USB gadget does not exist");
         if (!isBound(fs))
             throw new IllegalStateException("USB gadget is not bound to UDC");
 
-        fs.fwrite("", getUDCPath(gadget_name_));
-        fs.fwrite(getSystemUDC(fs), getUDCPath(SYSTEM_GADGET));
+        fs.write("", getUDCPath(gadget_name_));
+        fs.write(getSystemUDC(fs), getUDCPath(SYSTEM_GADGET));
     }
 
     public void remove(FileSystem fs) throws IOException {
-        Log.v(TAG, "UsbGadget.remove()");
+        Timber.d("Removing USB gadget '%s'", this.gadget_name_);
         String gadgetPath = getGadgetPath(gadget_name_);
         if (!isCreated(fs))
             throw new IllegalStateException("USB gadget does not exist");
@@ -124,6 +123,15 @@ public class UsbGadget {
                 && Integer.parseInt(fs.getSystemProp("sys.usb.configfs")) >= 1;
     }
 
+    public String getAttribute(FileSystem fs, String functionName, String attrib) throws IOException {
+        String gadgetPath = getGadgetPath(gadget_name_);
+        String functionPath = Paths.get(gadgetPath, "configs", CONFIG_DIR, functionName).toString();
+        if (!fs.exists(functionPath)) {
+            throw new IllegalStateException(String.format("Function symlink '%s' does not exist", functionPath));
+        }
+        return fs.readline(Paths.get(functionPath, attrib).toString());
+    }
+
     public String getGadgetPath(String gadgetName) {
         return Paths.get(configFsPath_, "usb_gadget", gadgetName).toString();
     }
@@ -133,7 +141,7 @@ public class UsbGadget {
     }
 
     public String getActiveUDC(FileSystem fs, String gadgetName) throws IOException {
-        return fs.freadline(getUDCPath(gadgetName));
+        return fs.readline(getUDCPath(gadgetName));
     }
 
     public boolean isCreated(FileSystem fs) {
@@ -155,7 +163,7 @@ public class UsbGadget {
     public String serial() {
         ArrayList<String> functionDir = new ArrayList<>();
         for (UsbGadgetFunction function : getFunctions()) {
-            functionDir.add(function.getFunctionDir());
+            functionDir.add(function.getName());
         }
         return String.format("%x", functionDir.hashCode());
     }
@@ -165,6 +173,6 @@ public class UsbGadget {
     }
 
     public static String getUDCState(FileSystem fs, String udc) throws IOException {
-        return fs.freadline(Paths.get("/sys/class/udc", udc, "state").toString());
+        return fs.readline(Paths.get("/sys/class/udc", udc, "state").toString());
     }
 }

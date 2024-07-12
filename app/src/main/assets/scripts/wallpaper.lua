@@ -4,7 +4,7 @@
 
 require('common')
 
-kb = luausb.create({ id = 0, type = "keyboard" })
+kb = luausb.create({ type = "keyboard" })
 
 local file = prompt{
     message="Enter the URL of the wallpaper to download.",
@@ -17,7 +17,6 @@ while true do
 
     -- poll until usb plugged in
     wait_for_state('configured')
-
     wait_for_detect(kb)
     print("running")
 
@@ -39,6 +38,5 @@ while true do
             "exit\n")
 
     print("done")
-
-    wait_for_state('not attached')
+    wait_for_state("not attached")
 end

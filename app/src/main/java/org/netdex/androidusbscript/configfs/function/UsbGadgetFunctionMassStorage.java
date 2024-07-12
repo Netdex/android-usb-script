@@ -23,9 +23,10 @@ public class UsbGadgetFunctionMassStorage extends UsbGadgetFunction {
         public boolean stall = true;
 
         public long size = 256;   // in MB, ignored if the file already exists
+        public String label;
 
         public Parameters(String file, boolean ro, boolean removable,
-                          boolean cdrom, boolean nofua, boolean stall, long size) {
+                          boolean cdrom, boolean nofua, boolean stall, long size, String label) {
             this.file = file;
             this.ro = ro;
             this.removable = removable;
@@ -33,6 +34,7 @@ public class UsbGadgetFunctionMassStorage extends UsbGadgetFunction {
             this.nofua = nofua;
             this.stall = stall;
             this.size = size;
+            this.label = label;
         }
 
         public Parameters(String file) {
@@ -54,31 +56,35 @@ public class UsbGadgetFunctionMassStorage extends UsbGadgetFunction {
         super.create(fs, gadgetPath);
 
         Parameters params = (Parameters) this.params_;
-        String functionDir = getFunctionDir();
+        String functionDir = getName();
 
         if (!fs.exists(params.file)) {
             // TODO: This is kind of dangerous, we should probably drop privileges for this
             Shell.Result result = Shell.cmd(
                     String.format(Locale.US,
                             "dd bs=1048576 count=%d if=/dev/zero of=\"%s\"",
-                            params.size, params.file)).exec();
+                            params.size, params.file),
+                    String.format(Locale.US,
+                            "mkfs.exfat -L \"%s\" \"%s\"",
+                            params.size, params.file)
+            ).exec();
             if (!result.isSuccess()) {
                 throw new IllegalArgumentException(
                         String.format("Failed to create image \"%s\": errno=%d", params.file, result.getCode()));
             }
         }
-        fs.fwrite(params.stall ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, "stall").toString());
+        fs.write(params.stall ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, "stall").toString());
 
         final String lunName = "lun.0";
-        fs.fwrite(params.file, Paths.get(gadgetPath, "functions", functionDir, lunName, "file").toString());
-        fs.fwrite(params.ro ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, lunName, "ro").toString());
-        fs.fwrite(params.removable ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, lunName, "removable").toString());
-        fs.fwrite(params.cdrom ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, lunName, "cdrom").toString());
-        fs.fwrite(params.nofua ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, lunName, "nofua").toString());
+        fs.write(params.file, Paths.get(gadgetPath, "functions", functionDir, lunName, "file").toString());
+        fs.write(params.ro ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, lunName, "ro").toString());
+        fs.write(params.removable ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, lunName, "removable").toString());
+        fs.write(params.cdrom ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, lunName, "cdrom").toString());
+        fs.write(params.nofua ? 1 : 0, Paths.get(gadgetPath, "functions", functionDir, lunName, "nofua").toString());
     }
 
     @Override
-    public String getFunctionDir() {
+    public String getName() {
         return "mass_storage.usb" + this.id_;
     }
 }

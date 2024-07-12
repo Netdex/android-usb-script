@@ -1,7 +1,6 @@
 package org.netdex.androidusbscript.service;
 
 import static android.app.Notification.EXTRA_NOTIFICATION_ID;
-import static org.netdex.androidusbscript.MainActivity.TAG;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -12,7 +11,6 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.drawable.Icon;
 import android.os.IBinder;
-import android.util.Log;
 
 import com.topjohnwu.superuser.ipc.RootService;
 
@@ -26,6 +24,8 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import timber.log.Timber;
 
 public class LuaUsbService extends Service {
 
@@ -67,7 +67,7 @@ public class LuaUsbService extends Service {
     }
 
     public boolean submitTask(LuaUsbTask task) {
-        Log.v(TAG, "LuaUsbService.submitTask()");
+        Timber.d("Submitting Lua USB task '%s'", task.getName());
         synchronized (this) {
             if (activeTask_ != null) return false;
             activeTask_ = task;
@@ -83,10 +83,10 @@ public class LuaUsbService extends Service {
     }
 
     public void stopActiveTask() {
-        Log.v(TAG, "LuaUsbService.stopActiveTask()");
         synchronized (this) {
             if (activeTask_ == null) return;
             try {
+                Timber.d("Stopping active Lua USB task '%s'", activeTask_.getName());
                 activeTask_.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -103,7 +103,7 @@ public class LuaUsbService extends Service {
     }
 
     private void onTaskCompleted(LuaUsbTask task) {
-        Log.v(TAG, "LuaUsbService.onTaskCompleted()");
+        Timber.d("Lua USB task '%s' completed", task.getName());
         if (notificationManager_ != null)
             notificationManager_.notify(ONGOING_NOTIFICATION_ID, getNotification(null));
         callback_.onTaskCompleted(task);
@@ -111,19 +111,19 @@ public class LuaUsbService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        Log.v(TAG, "LuaUsbService.onCreate()");
+        Timber.d("Binding Lua USB service");
         return new Binder(this);
     }
 
     @Override
     public boolean onUnbind(Intent intent) {
-        Log.v(TAG, "LuaUsbService.onUnbind()");
+        Timber.d("Unbinding Lua USB service");
         return false;
     }
 
     @Override
     public void onCreate() {
-        Log.v(TAG, "LuaUsbService.onCreate()");
+        Timber.d("Creating Lua USB service");
         Intent intent = new Intent(this, RootFileSystemService.class);
         RootService.bind(intent, rootSvcConn_);
 
@@ -133,7 +133,7 @@ public class LuaUsbService extends Service {
 
     @Override
     public void onDestroy() {
-        Log.v(TAG, "LuaUsbService.onDestroy()");
+        Timber.d("Destroying Lua USB service");
         notificationManager_ = null;
         if (rootSvcConn_ != null) {
             RootService.unbind(rootSvcConn_);

