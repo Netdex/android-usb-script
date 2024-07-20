@@ -2,7 +2,7 @@ package org.netdex.androidusbscript.lua;
 
 import static org.netdex.androidusbscript.function.HidInput.Keyboard.Mod.MOD_LSHIFT;
 import static org.netdex.androidusbscript.function.HidInput.Keyboard.Mod.MOD_NONE;
-import static org.netdex.androidusbscript.task.LuaUsbLibrary.checkbyte;
+import static org.netdex.androidusbscript.lua.LuaUsbLibrary.checkbyte;
 
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaTable;
@@ -13,10 +13,11 @@ import org.netdex.androidusbscript.function.DeviceStream;
 import org.netdex.androidusbscript.util.FileSystem;
 
 import java.io.IOException;
+import java.nio.file.Path;
 
 public class LuaHidKeyboard extends DeviceStream {
 
-    public LuaHidKeyboard(FileSystem fs, String devicePath) throws IOException {
+    public LuaHidKeyboard(FileSystem fs, Path devicePath) {
         super(fs, devicePath);
     }
 

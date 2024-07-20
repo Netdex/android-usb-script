@@ -15,7 +15,7 @@ end
 
 function wait_for_state(state)
     while luausb.state() ~= state do
-        wait(1000)
+        wait(100)
     end
 end
 

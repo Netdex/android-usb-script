@@ -5,11 +5,13 @@ import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.lib.jse.JsePlatform;
 import org.netdex.androidusbscript.configfs.UsbGadget;
+import org.netdex.androidusbscript.lua.LuaUsbLibrary;
 import org.netdex.androidusbscript.util.FileSystem;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.file.Paths;
 
 import timber.log.Timber;
 
@@ -37,21 +39,19 @@ public class LuaUsbTask implements Closeable {
         taskThread_ = Thread.currentThread();
 
         try {
-            UsbGadget usbGadget = new UsbGadget("hidf", "/config");
 
             ioBridge_.onLogMessage("<b>-- Started <i>" + name_ + "</i></b>");
-            try {
+            try (UsbGadget usbGadget = new UsbGadget(fs, "hidf", Paths.get("/config"))) {
                 try {
                     luaUsbLibrary_ = new LuaUsbLibrary(fs, usbGadget, ioBridge_);
                     Globals globals = JsePlatform.standardGlobals();
-                    globals.load(new StringReader("package.path = '/assets/lib/?.lua;'"),
-                            "initAndroidPath").call();
+                    globals.load(new StringReader("package.path = '/assets/lib/?.lua;'"), "initAndroidPath").call();
                     luaUsbLibrary_.bind(globals);
                     LuaValue luaChunk_ = globals.load(src_);
                     luaChunk_.call();
                 } catch (LuaError e) {
                     if (!(e.getCause() instanceof InterruptedException)) {
-                        e.printStackTrace();
+                        Timber.w(e);
                         ioBridge_.onLogMessage(getExceptionMessage(e));
                     }
                 } finally {
@@ -62,20 +62,9 @@ public class LuaUsbTask implements Closeable {
                 }
             } finally {
                 ioBridge_.onLogMessage("<b>-- Ended <i>" + name_ + "</i></b>");
-
-                if (usbGadget.isCreated(fs)) {
-                    if (usbGadget.isBound(fs)) {
-                        usbGadget.unbind(fs);
-                    } else {
-                        Timber.w("USB gadget is not bound on task end");
-                    }
-                    usbGadget.remove(fs);
-                } else {
-                    Timber.w("USB gadget is not created on task end");
-                }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            Timber.e(e);
             ioBridge_.onLogMessage(getExceptionMessage(e));
         }
     }

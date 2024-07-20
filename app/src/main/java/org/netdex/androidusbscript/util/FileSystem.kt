@@ -1,88 +1,85 @@
-package org.netdex.androidusbscript.util;
+package org.netdex.androidusbscript.util
 
-import com.topjohnwu.superuser.ShellUtils;
-import com.topjohnwu.superuser.nio.ExtendedFile;
-import com.topjohnwu.superuser.nio.FileSystemManager;
+import com.topjohnwu.superuser.ShellUtils
+import com.topjohnwu.superuser.nio.FileSystemManager
+import timber.log.Timber
+import java.io.BufferedReader
+import java.io.IOException
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.io.OutputStream
+import java.nio.charset.StandardCharsets
+import java.nio.file.Path
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
-
-import timber.log.Timber;
-
-
-public class FileSystem {
-    private final FileSystemManager remoteFs_;
-
-    public FileSystem(FileSystemManager remoteFs) {
-        this.remoteFs_ = remoteFs;
+class FileSystem(private val remoteFs: FileSystemManager) {
+    @Throws(IOException::class)
+    fun inputStream(path: Path): InputStream {
+        val file = remoteFs.getFile(path.toString())
+        return file.newInputStream()
     }
 
-    public InputStream open_r(String path) throws IOException {
-        ExtendedFile file = remoteFs_.getFile(path);
-        return file.newInputStream();
+    @Throws(IOException::class)
+    fun outputStream(path: Path): OutputStream {
+        val file = remoteFs.getFile(path.toString())
+        return file.newOutputStream()
     }
 
-    public OutputStream open_w(String path) throws IOException {
-        ExtendedFile file = remoteFs_.getFile(path);
-        return file.newOutputStream();
+    @Throws(IOException::class)
+    fun write(v: ByteArray, path: Path) {
+        Timber.v("echo -ne '%s' > %s", Util.escapeHex(v), path)
+        val file = remoteFs.getFile(path.toString())
+        val os = file.newOutputStream(false)
+        os.write(v)
+        os.close()
     }
 
-    public void write(byte[] val, String path) throws IOException {
-        Timber.v("echo -ne '%s' > %s", Util.escapeHex(val), path);
-        ExtendedFile file = remoteFs_.getFile(path);
-        OutputStream os = file.newOutputStream(false);
-        os.write(val);
-        os.close();
+    @Throws(IOException::class)
+    fun <T> write(v: T, path: Path) {
+        Timber.v("echo '%s' > %s", v, path)
+        val file = remoteFs.getFile(path.toString())
+        val stream = file.newOutputStream(false)
+        val output = String.format("%s\n", v)
+        stream.write(output.toByteArray(StandardCharsets.UTF_8))
+        stream.close()
     }
 
-    public <T> void write(T val, String path) throws IOException {
-        Timber.v("echo '%s' > %s", val, path);
-        ExtendedFile file = remoteFs_.getFile(path);
-        OutputStream os = file.newOutputStream(false);
-        String output = String.format("%s\n", val);
-        os.write(output.getBytes(StandardCharsets.UTF_8));
-        os.close();
+    @Throws(IOException::class)
+    fun readLine(path: Path): String {
+        val file = remoteFs.getFile(path.toString())
+        val stream = file.newInputStream()
+        BufferedReader(InputStreamReader(stream)).use { br -> return br.readLine() }
     }
 
-    public String readline(String path) throws IOException {
-        ExtendedFile file = remoteFs_.getFile(path);
-        InputStream is = file.newInputStream();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
-            return br.readLine();
-        }
+    fun exists(path: Path): Boolean {
+        return remoteFs.getFile(path.toString()).exists()
     }
 
-    public boolean exists(String path) {
-        return remoteFs_.getFile(path).exists();
+    @Throws(IOException::class)
+    fun mkdir(path: Path) {
+        Timber.v("mkdir %s", path)
+        if (!remoteFs.getFile(path.toString()).mkdir())
+            throw IOException(String.format("Failed to create directory '%s'", path))
     }
 
-    public void mkdir(String path) throws IOException {
-        Timber.v("mkdir %s", path);
-        if (!remoteFs_.getFile(path).mkdir())
-            throw new IOException(String.format("Failed to create directory '%s'", path));
+    @Throws(IOException::class)
+    fun ln(path: Path, target: Path) {
+        Timber.v("ln -s %s %s", target, path)
+        if (!remoteFs.getFile(path.toString()).createNewSymlink(target.toString()))
+            throw IOException(String.format("Failed to create symlink '%s' -> '%s'", path, target))
     }
 
-    public void ln(String path, String target) throws IOException {
-        Timber.v("ln -s %s %s", target, path);
-        if (!remoteFs_.getFile(path).createNewSymlink(target))
-            throw new IOException(String.format("Failed to create symlink '%s' -> '%s'", path, target));
+    @Throws(IOException::class)
+    fun delete(path: Path) {
+        Timber.v("rm %s", path)
+        if (!remoteFs.getFile(path.toString()).delete())
+            throw IOException(String.format("Failed to delete '%s'", path))
     }
 
-    public void delete(String path) throws IOException {
-        Timber.v("rm %s", path);
-        if (!remoteFs_.getFile(path).delete())
-            throw new IOException(String.format("Failed to delete '%s'", path));
+    fun getSystemProp(prop: String): String {
+        return ShellUtils.fastCmd("getprop '$prop'")
     }
 
-    public String getSystemProp(String prop) {
-        return ShellUtils.fastCmd(String.format("getprop %s", prop));
-    }
-
-    public FileSystemManager get() {
-        return remoteFs_;
+    fun get(): FileSystemManager {
+        return remoteFs
     }
 }

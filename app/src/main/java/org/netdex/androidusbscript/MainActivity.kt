@@ -1,208 +1,211 @@
-package org.netdex.androidusbscript;
+package org.netdex.androidusbscript
 
-import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.net.Uri;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.IBinder;
-import android.os.Looper;
-import android.text.Html;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
-import android.view.View;
-import android.widget.Button;
-import android.widget.ScrollView;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.os.IBinder
+import android.os.Looper
+import android.text.Html
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.widget.Button
+import android.widget.ScrollView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.os.HandlerCompat
+import org.netdex.androidusbscript.gui.ConfirmDialog
+import org.netdex.androidusbscript.gui.PromptDialog
+import org.netdex.androidusbscript.service.LuaUsbService
+import org.netdex.androidusbscript.service.LuaUsbServiceConnection
+import org.netdex.androidusbscript.task.LuaIOBridge
+import org.netdex.androidusbscript.task.LuaUsbTask
+import org.netdex.androidusbscript.task.LuaUsbTaskFactory
+import timber.log.Timber
 
-import androidx.activity.result.ActivityResult;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.os.HandlerCompat;
+class MainActivity : AppCompatActivity() {
+    private var notificationBroadcastReceiver: NotificationBroadcastReceiver? = null
 
-import timber.log.Timber;
+    private var selectAssetLauncher: ActivityResultLauncher<Intent>? = null
+    private var selectScriptLauncher: ActivityResultLauncher<Intent>? = null
 
-import static timber.log.Timber.DebugTree;
+    private var luaUsbTaskFactory: LuaUsbTaskFactory? = null
+    var luaUsbService: LuaUsbService? = null; private set
 
-import org.netdex.androidusbscript.gui.ConfirmDialog;
-import org.netdex.androidusbscript.gui.PromptDialog;
-import org.netdex.androidusbscript.service.LuaUsbService;
-import org.netdex.androidusbscript.service.LuaUsbServiceConnection;
-import org.netdex.androidusbscript.task.LuaIOBridge;
-import org.netdex.androidusbscript.task.LuaUsbTask;
-import org.netdex.androidusbscript.task.LuaUsbTaskFactory;
+    private var btnCancel: Button? = null
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        Timber.plant(Timber.DebugTree())
 
-public class MainActivity extends AppCompatActivity {
+        setContentView(R.layout.activity_main)
 
-    public static final String TAG = "android-usb-script";
+        val handler = HandlerCompat.createAsync(Looper.getMainLooper())
 
-    private NotificationBroadcastReceiver notificationBroadcastReceiver_;
+        btnCancel = findViewById(R.id.btn_cancel)
+        val logView = findViewById<TextView>(R.id.text_log)
+        val scrollView = findViewById<ScrollView>(R.id.scrollview)
 
-    private Handler handler_;
-    private ActivityResultLauncher<Intent> selectAssetLauncher_;
-    private ActivityResultLauncher<Intent> selectScriptLauncher_;
+        selectAssetLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result: ActivityResult -> this.onSelectLuaAsset(result) }
+        selectScriptLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result: ActivityResult -> this.onSelectLuaScript(result) }
 
-    private LuaUsbServiceConnection luaUsbSvcConn_;
-    private LuaUsbService luaUsbSvc_;
-    private LuaUsbTaskFactory luaUsbTaskFactory_;
+        notificationBroadcastReceiver = NotificationBroadcastReceiver()
+        val filter = IntentFilter(NotificationBroadcastReceiver.ACTION_STOP)
+        ContextCompat.registerReceiver(
+            this,
+            notificationBroadcastReceiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
 
-    private Button btnCancel_;
+        val dialogIO = object : LuaIOBridge {
+            override fun onLogMessage(s: String) {
+                handler.post {
+                    logView.append(Html.fromHtml(s, Html.FROM_HTML_MODE_COMPACT))
+                    logView.append("\n")
+                    scrollView.fullScroll(View.FOCUS_DOWN)
+                }
+            }
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+            override fun onConfirm(title: String, message: String): Boolean {
+                return ConfirmDialog(this@MainActivity, title, message).show()
+            }
 
-        // https://github.com/JakeWharton/timber/issues/484
-        // noinspection DataFlowIssue
-        Timber.plant((Timber.Tree) (Object) new Timber.DebugTree());
+            override fun onPrompt(
+                title: String, message: String, hint: String, def: String
+            ): String {
+                return PromptDialog(this@MainActivity, title, message, hint, def).show()
+            }
+        }
 
-        setContentView(R.layout.activity_main);
+        btnCancel!!.setOnClickListener { stopActiveTask() }
 
-        handler_ = HandlerCompat.createAsync(Looper.getMainLooper());
+        luaUsbTaskFactory = LuaUsbTaskFactory(dialogIO)
 
-        btnCancel_ = findViewById(R.id.btn_cancel);
-        TextView logView = findViewById(R.id.text_log);
-        ScrollView scrollView = findViewById(R.id.scrollview);
+        val luaUsbSvcConn = object : LuaUsbServiceConnection() {
+            override fun onServiceConnected(name: ComponentName, binder: IBinder) {
+                super.onServiceConnected(name, binder)
+                luaUsbService = service
+                val callback = LuaUsbService.Callback { task: LuaUsbTask? ->
+                    handler.post { btnCancel!!.setEnabled(false) }
+                }
+                luaUsbService!!.setCallback(callback)
+            }
+        }
+        val serviceIntent = Intent(this, LuaUsbService::class.java)
+        bindService(serviceIntent, luaUsbSvcConn, BIND_AUTO_CREATE)
 
-        selectAssetLauncher_ = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(), this::onSelectLuaAsset);
-        selectScriptLauncher_ = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(), this::onSelectLuaScript);
-
-        notificationBroadcastReceiver_ = new NotificationBroadcastReceiver();
-        IntentFilter filter = new IntentFilter(NotificationBroadcastReceiver.ACTION_STOP);
+        // https://developer.android.com/develop/ui/views/notifications/notification-permission
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(notificationBroadcastReceiver_, filter, Context.RECEIVER_EXPORTED);
+            val requestPermissionLauncher = registerForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { isGranted: Boolean ->
+            }
+            when {
+                ContextCompat.checkSelfPermission(
+                    this, android.Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                }
+
+                else -> {
+                    requestPermissionLauncher.launch(
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    )
+                }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(notificationBroadcastReceiver)
+    }
+
+    private fun submitTask(task: LuaUsbTask?) {
+        if (luaUsbService!!.submitTask(task!!)) {
+            btnCancel!!.isEnabled = true
         } else {
-            registerReceiver(notificationBroadcastReceiver_, filter);
-        }
-
-        var dialogIO = new LuaIOBridge() {
-            @Override
-            public void onLogMessage(String s) {
-                handler_.post(() -> {
-                    logView.append(Html.fromHtml(s, Html.FROM_HTML_MODE_COMPACT));
-                    logView.append("\n");
-                    scrollView.fullScroll(View.FOCUS_DOWN);
-                });
-            }
-
-            @Override
-            public boolean onConfirm(String title, String message) {
-                return new ConfirmDialog(MainActivity.this, title, message).show();
-            }
-
-            @Override
-            public String onPrompt(String title, String message, String hint, String def) {
-                return new PromptDialog(MainActivity.this, title, message, hint, def).show();
-            }
-        };
-
-        btnCancel_.setOnClickListener(v -> stopActiveTask());
-
-        luaUsbTaskFactory_ = new LuaUsbTaskFactory(dialogIO);
-
-        Intent serviceIntent = new Intent(this, LuaUsbService.class);
-        luaUsbSvcConn_ = new LuaUsbServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder binder) {
-                super.onServiceConnected(name, binder);
-                luaUsbSvc_ = luaUsbSvcConn_.getService();
-                LuaUsbService.Callback callback = task -> handler_.post(() -> {
-                    btnCancel_.setEnabled(false);
-                });
-                luaUsbSvc_.setCallback(callback);
-            }
-        };
-        bindService(serviceIntent, luaUsbSvcConn_, BIND_AUTO_CREATE);
-    }
-
-    protected void onDestroy() {
-        super.onDestroy();
-        unregisterReceiver(notificationBroadcastReceiver_);
-    }
-
-    public void submitTask(LuaUsbTask task) {
-        if (luaUsbSvc_.submitTask(task)) {
-            btnCancel_.setEnabled(true);
-        } else {
-            Toast.makeText(this, "A task is already running", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "A task is already running", Toast.LENGTH_SHORT).show()
         }
     }
 
-    public void stopActiveTask() {
-        luaUsbSvc_.stopActiveTask();
+    private fun stopActiveTask() {
+        luaUsbService!!.stopActiveTask()
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(@NonNull Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.menu_main, menu);
-        return true;
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        val inflater = menuInflater
+        inflater.inflate(R.menu.menu_main, menu)
+        return true
     }
 
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        switch (item.getItemId()) {
-            case (R.id.action_asset):
-                openLuaAsset();
-                return true;
-            case (R.id.action_script):
-                openLuaScript();
-                return true;
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.action_asset -> {
+                openLuaAsset()
+                return true
+            }
+
+            R.id.action_script -> {
+                openLuaScript()
+                return true
+            }
         }
-        return false;
+        return false
     }
 
-    private static final int PICK_LUA_SCRIPT = 3;
-
-    private void openLuaAsset() {
-        Intent intent = new Intent(this, SelectAssetActivity.class);
-        selectAssetLauncher_.launch(intent);
+    private fun openLuaAsset() {
+        val intent = Intent(this, SelectAssetActivity::class.java)
+        selectAssetLauncher!!.launch(intent)
     }
 
-    private void openLuaScript() {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("*/*");
-        setResult(PICK_LUA_SCRIPT, intent);
-        selectScriptLauncher_.launch(intent);
+    private fun openLuaScript() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+        intent.addCategory(Intent.CATEGORY_OPENABLE)
+        intent.setType("*/*")
+        setResult(PICK_LUA_SCRIPT, intent)
+        selectScriptLauncher!!.launch(intent)
     }
 
-    protected void onSelectLuaAsset(ActivityResult result) {
-        if (result.getResultCode() != Activity.RESULT_OK)
-            return;
-        Intent data = result.getData();
+    private fun onSelectLuaAsset(result: ActivityResult) {
+        if (result.resultCode != RESULT_OK) return
+        val data = result.data
 
-        String name = data.getStringExtra("name");
-        String path = data.getStringExtra("path");
-        submitTask(luaUsbTaskFactory_.createTaskFromLuaAsset(
-                MainActivity.this, name, path));
+        val name = data!!.getStringExtra("name")
+        val path = data.getStringExtra("path")
+        submitTask(
+            luaUsbTaskFactory!!.createTaskFromLuaAsset(
+                this@MainActivity, name, path
+            )
+        )
     }
 
-    protected void onSelectLuaScript(ActivityResult result) {
-        if (result.getResultCode() != Activity.RESULT_OK)
-            return;
-        Intent data = result.getData();
+    private fun onSelectLuaScript(result: ActivityResult) {
+        if (result.resultCode != RESULT_OK) return
+        val data = result.data
 
-        Uri uri = data.getData();
-        submitTask(luaUsbTaskFactory_.createTaskFromLuaScript(
-                MainActivity.this, uri.getLastPathSegment(), uri));
+        val uri = data!!.data
+        submitTask(
+            luaUsbTaskFactory!!.createTaskFromLuaScript(
+                this@MainActivity, uri!!.lastPathSegment, uri
+            )
+        )
     }
 
-    public LuaUsbService getLuaUsbService() {
-        return luaUsbSvc_;
+    companion object {
+        private const val PICK_LUA_SCRIPT = 3
     }
 }

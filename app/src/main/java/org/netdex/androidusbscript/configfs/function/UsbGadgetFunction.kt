@@ -1,85 +1,75 @@
-package org.netdex.androidusbscript.configfs.function;
+package org.netdex.androidusbscript.configfs.function
 
-import org.netdex.androidusbscript.util.FileSystem;
+import org.netdex.androidusbscript.configfs.UsbGadget
+import org.netdex.androidusbscript.util.FileSystem
+import timber.log.Timber
+import java.io.IOException
+import java.nio.file.Path
+import java.nio.file.Paths
 
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.Arrays;
-
-import timber.log.Timber;
+open class FunctionParameters
 
 /**
  * https://www.kernel.org/doc/Documentation/usb/gadget_configfs.txt
  * https://www.kernel.org/doc/Documentation/ABI/testing/
  */
-public abstract class UsbGadgetFunction {
-    public static class Parameters {
+abstract class UsbGadgetFunction(
+    private val usbGadget: UsbGadget,
+    protected val id: Int,
+    protected val params: FunctionParameters
+) {
+    abstract val name: String
+    protected val fs: FileSystem get() = usbGadget.fs
+    protected val functionPath: Path
+        get() = usbGadget.getGadgetPath().resolve("functions").resolve(name)
 
+    @Throws(IOException::class)
+    fun add() {
+        this.create()
+        this.configure()
     }
 
-    protected final int id_;
-    protected final Parameters params_;
-
-    public UsbGadgetFunction(int id_, Parameters params_) {
-        this.id_ = id_;
-        this.params_ = params_;
+    @Throws(IOException::class)
+    fun remove() {
+        this.unconfigure()
+        this.destroy()
     }
 
-    /**
-     * Code to be called for the function when the ConfigFS structure is being
-     * created for the USB gadget
-     *
-     * @param fs Remote FileSystem wrapper
-     */
-    public void add(FileSystem fs, String gadgetPath, String configDir) throws IOException {
-        this.create(fs, gadgetPath);
-        this.configure(fs, gadgetPath, configDir);
-    }
-
-    protected void create(FileSystem fs, String gadgetPath) throws IOException {
-        String functionDir = getName();
-        String functionPath = Paths.get(gadgetPath, "functions", functionDir).toString();
-        if (fs.exists(functionPath)) {
-            throw new IllegalStateException(String.format("Function path '%s' already exists", functionPath));
+    @Throws(IOException::class)
+    protected open fun create() {
+        check(!fs.exists(functionPath)) {
+            "Function path '$functionPath' already exists"
         }
-        Timber.d("Creating USB function '%s'", functionDir);
-        fs.mkdir(functionPath);
+        Timber.d("Creating USB function '%s'", name)
+        fs.mkdir(functionPath)
     }
 
-    protected void configure(FileSystem fs, String gadgetPath, String configDir) throws IOException {
-        String functionDir = getName();
-        String functionPath = Paths.get(gadgetPath, "functions", functionDir).toString();
-        if (!fs.exists(functionPath)) {
-            throw new IllegalStateException(String.format("Function path '%s' does not exist", functionPath));
-        }
-        Timber.d("Configuring USB function '%s'", functionDir);
-        fs.ln(Paths.get(gadgetPath, "configs", configDir, functionDir).toString(), functionPath);
+    @Throws(IOException::class)
+    protected fun configure() {
+        check(fs.exists(functionPath)) { "Function path '$functionPath' does not exist" }
+        Timber.d("Configuring USB function '%s'", name)
+        val functionLinkPath = usbGadget.getConfigPath().resolve(name)
+        fs.ln(functionLinkPath, functionPath)
     }
 
-    public void remove(FileSystem fs, String gadgetPath, String configDir) throws IOException {
-        this.unconfigure(fs, gadgetPath, configDir);
-        this.destroy(fs, gadgetPath);
+    @Throws(IOException::class)
+    protected fun unconfigure() {
+        val functionLinkPath = usbGadget.getConfigPath().resolve(name)
+        check(fs.exists(functionLinkPath)) { "Function symlink '$functionLinkPath' does not exist" }
+        Timber.d("Unconfiguring USB function '%s'", name)
+        fs.delete(functionLinkPath)
     }
 
-    protected void destroy(FileSystem fs, String gadgetPath) throws IOException {
-        String functionDir = getName();
-        String functionPath = Paths.get(gadgetPath, "functions", functionDir).toString();
-        if (!fs.exists(functionPath)) {
-            throw new IllegalStateException(String.format("Function path '%s' does not exist", functionPath));
-        }
-        Timber.d("Destroying USB function '%s'", functionDir);
-        fs.delete(functionPath);
+    @Throws(IOException::class)
+    protected fun destroy() {
+        check(fs.exists(functionPath)) { "Function path '$functionPath' does not exist" }
+        Timber.d("Destroying USB function '%s'", name)
+        fs.delete(functionPath)
     }
 
-    protected void unconfigure(FileSystem fs, String gadgetPath, String configDir) throws IOException {
-        String functionDir = getName();
-        String functionPath = Paths.get(gadgetPath, "configs", configDir, functionDir).toString();
-        if (!fs.exists(functionPath)) {
-            throw new IllegalStateException(String.format("Function symlink '%s' does not exist", functionPath));
-        }
-        Timber.d("Unconfiguring USB function '%s'", functionDir);
-        fs.delete(functionPath);
+    @Throws(IOException::class)
+    protected fun getAttribute(attrib: String?): String {
+        check(fs.exists(functionPath)) { "Function path '$functionPath' does not exist" }
+        return fs.readLine(functionPath.resolve(attrib))
     }
-
-    public abstract String getName();
 }

@@ -1,13 +1,12 @@
-package org.netdex.androidusbscript.task;
+package org.netdex.androidusbscript.task
 
 /**
  * Created by netdex on 12/30/17.
  */
+interface LuaIOBridge {
+    fun onLogMessage(s: String)
 
-public interface LuaIOBridge {
-    void onLogMessage(String s);
+    fun onConfirm(title: String, message: String): Boolean
 
-    boolean onConfirm(String title, String message);
-
-    String onPrompt(String title, String message, String hint, String def);
+    fun onPrompt(title: String, message: String, hint: String, def: String): String
 }

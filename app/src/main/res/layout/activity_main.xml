@@ -16,27 +16,18 @@
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
+        android:background="@android:color/background_light"
         android:enabled="false"
         android:text="@string/cancel"
         android:textSize="14sp" />
-
-    <TextView
-        android:id="@+id/lblLogContent"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/btn_cancel"
-        android:layout_alignParentStart="true"
-        android:layout_marginTop="20dp"
-        android:text="@string/log_content"
-        android:textStyle="normal|bold" />
 
     <ScrollView
         android:id="@+id/scrollview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@+id/lblLogContent"
+        android:layout_below="@+id/btn_cancel"
         android:layout_alignParentStart="true"
-        android:layout_marginTop="10dp"
+        android:background="@android:color/background_dark"
         android:fillViewport="false">
 
         <LinearLayout
@@ -49,6 +40,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:fontFamily="monospace"
+                android:textColor="?android:attr/textColorPrimaryInverse"
                 android:textSize="11sp" />
         </LinearLayout>
     </ScrollView>

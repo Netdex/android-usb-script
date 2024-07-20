@@ -19,4 +19,10 @@
 # This is generated automatically by the Android Gradle plugin.
 
 -dontwarn javax.script.**
--keepnames class org.luaj.vm2.** {*; }
+-dontwarn org.apache.bcel.**
+
+-dontobfuscate
+
+# Do NOT optimize LuaJ or classes which serve as Lua API boundary
+-keep class org.luaj.vm2.** {*; }
+-keep class org.netdex.androidusbscript.lua.** {*; }

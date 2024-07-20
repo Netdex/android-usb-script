@@ -1,26 +1,18 @@
-package org.netdex.androidusbscript.service;
+package org.netdex.androidusbscript.service
 
-import android.content.ComponentName;
-import android.content.ServiceConnection;
-import android.os.IBinder;
+import android.content.ComponentName
+import android.content.ServiceConnection
+import android.os.IBinder
 
-public class LuaUsbServiceConnection implements ServiceConnection {
-    private LuaUsbService service_;
+open class LuaUsbServiceConnection : ServiceConnection {
+    var service: LuaUsbService? = null
+        private set
 
-    public LuaUsbServiceConnection() {
+    override fun onServiceConnected(name: ComponentName, binder: IBinder) {
+        service = (binder as LuaUsbService.Binder).service
     }
 
-    @Override
-    public void onServiceConnected(ComponentName name, IBinder binder) {
-        service_ = ((LuaUsbService.Binder) binder).getService();
-    }
-
-    @Override
-    public void onServiceDisconnected(ComponentName name) {
-        service_ = null;
-    }
-
-    public LuaUsbService getService(){
-        return service_;
+    override fun onServiceDisconnected(name: ComponentName) {
+        service = null
     }
 }

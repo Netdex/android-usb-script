@@ -1,92 +1,79 @@
-package org.netdex.androidusbscript.function;
+package org.netdex.androidusbscript.function
 
-import com.topjohnwu.superuser.io.SuFile;
+import com.topjohnwu.superuser.io.SuFile
+import org.netdex.androidusbscript.util.FileSystem
+import timber.log.Timber
+import java.io.Closeable
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import java.nio.file.Path
 
-import org.netdex.androidusbscript.util.FileSystem;
-import org.netdex.androidusbscript.util.Util;
+abstract class DeviceStream(private val fs: FileSystem, private val devicePath: Path) :
+    Closeable {
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
-import timber.log.Timber;
-
-public abstract class DeviceStream implements Closeable {
-    private final FileSystem fs_;
-    private final String devicePath_;
-
-    private OutputStream os_;
-    private InputStream is_;
-
-    public DeviceStream(FileSystem fs, String devicePath) {
-        this.fs_ = fs;
-        this.devicePath_ = devicePath;
+    private val lazyOutput = lazy {
+        if (!waitForDevice())
+            throw RuntimeException("Device '$devicePath' does not exist")
+        Timber.d("Opening output stream for device '%s'", devicePath)
+        fs.outputStream(devicePath)
     }
 
-    protected void write(byte[] b) throws IOException, InterruptedException {
-//        Timber.v("write(%s) < %s", devicePath_, Util.bytesToHex(b));
-        this.getOutputStream().write(b);
+    private val lazyInput = lazy {
+        if (!waitForDevice())
+            throw RuntimeException("Device '$devicePath' does not exist")
+        // MITIGATION: Using RootService via IPC causes my phone to kernel panic when reading
+        // /dev/hidgX. Though it's not recommended, using SuFile here seems to work well enough.
+        Timber.d("Opening input stream for device '%s'", devicePath)
+        SuFile.open(devicePath.toString()).newInputStream()
+
     }
 
-    protected int read(byte[] b) throws IOException, InterruptedException {
-        int ret = this.getInputStream().read(b);
-//        Timber.v("read(%s) > %s", devicePath_, Util.bytesToHex(b));
-        return ret;
+    @get:Throws(IOException::class, InterruptedException::class)
+    protected val outputStream: OutputStream by lazyOutput
+
+    @get:Throws(IOException::class, InterruptedException::class)
+    protected val inputStream: InputStream by lazyInput
+
+    @Throws(IOException::class, InterruptedException::class)
+    protected fun write(b: ByteArray?) {
+        outputStream.write(b)
     }
 
-    protected int read() throws IOException, InterruptedException {
+    @Throws(IOException::class, InterruptedException::class)
+    protected fun read(b: ByteArray?): Int {
+        return inputStream.read(b)
+    }
+
+    @Throws(IOException::class, InterruptedException::class)
+    protected fun read(): Int {
         // NOTE: Under no circumstance do we allow the script to read without data being available,
         // since there is no way to cancel a blocking read.
-        return this.getInputStream().read();
+        return inputStream.read()
     }
 
-    protected int available() throws IOException, InterruptedException {
-        return this.getInputStream().available();
+    @Throws(IOException::class, InterruptedException::class)
+    protected fun available(): Int {
+        return inputStream.available()
     }
 
-    protected OutputStream getOutputStream() throws IOException, InterruptedException {
-        if (os_ == null) {
-            if (!waitForDevice())
-                throw new RuntimeException(String.format("Device '%s' does not exist", devicePath_));
-            Timber.d("Opening output stream for device '%s'", devicePath_);
-            os_ = fs_.open_w(devicePath_);
-        }
-        return os_;
-    }
-
-    protected InputStream getInputStream() throws IOException, InterruptedException {
-        if (is_ == null) {
-            if (!waitForDevice())
-                throw new RuntimeException(String.format("Device \"%s\" does not exist", devicePath_));
-            // MITIGATION: Using RootService via IPC causes my phone to kernel panic when reading
-            // /dev/hidgX. Though it's not recommended, using SuFile here seems to work well enough.
-            Timber.d("Opening input stream for device '%s'", devicePath_);
-            is_ = SuFile.open(devicePath_).newInputStream();
-        }
-        return is_;
-    }
-
-    private boolean waitForDevice() throws InterruptedException {
-        for (int i = 0; i < 5; ++i) {
-            if (fs_.exists(devicePath_)) {
-                return true;
+    @Throws(InterruptedException::class)
+    private fun waitForDevice(): Boolean {
+        for (i in 0..4) {
+            if (fs.exists(devicePath)) {
+                return true
             }
-            Thread.sleep(500);
+            Thread.sleep(500)
         }
-        return false;
+        return false
     }
 
-    @Override
-    public void close() throws IOException {
-        Timber.d("Closing device stream '%s'", devicePath_);
-        if (os_ != null) {
-            os_.close();
-            os_ = null;
-        }
-        if (is_ != null) {
-            is_.close();
-            is_ = null;
-        }
+    @Throws(IOException::class)
+    override fun close() {
+        Timber.d("Closing device stream '%s'", devicePath)
+        if (lazyOutput.isInitialized())
+            outputStream.close()
+        if (lazyInput.isInitialized())
+            inputStream.close()
     }
 }

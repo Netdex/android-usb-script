@@ -1,194 +1,191 @@
-package org.netdex.androidusbscript.service;
+package org.netdex.androidusbscript.service
 
-import static android.app.Notification.EXTRA_NOTIFICATION_ID;
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.ComponentName
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
+import android.os.Build
+import android.os.IBinder
+import androidx.annotation.RequiresApi
+import androidx.core.app.ServiceCompat
+import com.topjohnwu.superuser.ipc.RootService
+import org.netdex.androidusbscript.MainActivity
+import org.netdex.androidusbscript.NotificationBroadcastReceiver
+import org.netdex.androidusbscript.R
+import org.netdex.androidusbscript.task.LuaUsbTask
+import org.netdex.androidusbscript.util.FileSystem
+import timber.log.Timber
+import java.io.IOException
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.Service;
-import android.content.ComponentName;
-import android.content.Intent;
-import android.graphics.drawable.Icon;
-import android.os.IBinder;
+class LuaUsbService : Service() {
+    class Binder(val service: LuaUsbService) : android.os.Binder()
 
-import com.topjohnwu.superuser.ipc.RootService;
-
-import org.netdex.androidusbscript.MainActivity;
-import org.netdex.androidusbscript.NotificationBroadcastReceiver;
-import org.netdex.androidusbscript.R;
-import org.netdex.androidusbscript.task.LuaUsbTask;
-import org.netdex.androidusbscript.util.FileSystem;
-
-import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-import timber.log.Timber;
-
-public class LuaUsbService extends Service {
-
-    public static class Binder extends android.os.Binder {
-        private final LuaUsbService service_;
-
-        public Binder(LuaUsbService service) {
-            this.service_ = service;
-        }
-
-        public LuaUsbService getService() {
-            return service_;
-        }
+    fun interface Callback {
+        fun onTaskCompleted(task: LuaUsbTask?)
     }
 
-    public interface Callback {
-        void onTaskCompleted(LuaUsbTask task);
-    }
+    private var notificationManager: NotificationManager? = null
 
-    private static final String CHANNEL_ID = LuaUsbService.class.getName();
-    public static final int ONGOING_NOTIFICATION_ID = 1;
-    private NotificationManager notificationManager_;
+    private val executorService: ExecutorService = Executors.newSingleThreadExecutor()
+    private var activeTask: LuaUsbTask? = null
+    private var callback: Callback? = null
 
-    private final ExecutorService executorService_ = Executors.newSingleThreadExecutor();
-    private LuaUsbTask activeTask_ = null;
-    private Callback callback_;
+    private var rootSvcConn: RootServiceConnection?
+    private var fs: FileSystem? = null
 
-    private RootServiceConnection rootSvcConn_;
-    private FileSystem fs_;
-
-    public LuaUsbService() {
-        rootSvcConn_ = new RootServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder service) {
-                super.onServiceConnected(name, service);
-                fs_ = new FileSystem(this.getRemoteFs());
+    init {
+        rootSvcConn = object : RootServiceConnection() {
+            override fun onServiceConnected(name: ComponentName, service: IBinder) {
+                super.onServiceConnected(name, service)
+                fs = FileSystem(remoteFs!!)
             }
-        };
-    }
-
-    public boolean submitTask(LuaUsbTask task) {
-        Timber.d("Submitting Lua USB task '%s'", task.getName());
-        synchronized (this) {
-            if (activeTask_ != null) return false;
-            activeTask_ = task;
-            executorService_.execute(() -> run(task));
         }
-        if (notificationManager_ != null)
-            notificationManager_.notify(ONGOING_NOTIFICATION_ID, getNotification(task));
-        return true;
     }
 
-    public void setCallback(Callback callback) {
-        callback_ = callback;
+    fun submitTask(task: LuaUsbTask): Boolean {
+        Timber.d("Submitting Lua USB task '%s'", task.name)
+        synchronized(this) {
+            if (activeTask != null) return false
+            activeTask = task
+            executorService.execute { run(task) }
+        }
+        if (notificationManager != null)
+            notificationManager!!.notify(ONGOING_NOTIFICATION_ID, getNotification(task))
+        return true
     }
 
-    public void stopActiveTask() {
-        synchronized (this) {
-            if (activeTask_ == null) return;
+    fun setCallback(callback: Callback?) {
+        this.callback = callback
+    }
+
+    fun stopActiveTask() {
+        synchronized(this) {
+            if (activeTask == null) return
             try {
-                Timber.d("Stopping active Lua USB task '%s'", activeTask_.getName());
-                activeTask_.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+                Timber.d("Stopping active Lua USB task '%s'", activeTask!!.name)
+                activeTask!!.close()
+            } catch (e: IOException) {
+                Timber.e(e)
             }
         }
     }
 
-    private void run(LuaUsbTask task) {
-        task.run(fs_);
-        synchronized (this) {
-            activeTask_ = null;
+    private fun run(task: LuaUsbTask) {
+        task.run(fs)
+        synchronized(this) {
+            activeTask = null
         }
-        onTaskCompleted(task);
+        onTaskCompleted(task)
     }
 
-    private void onTaskCompleted(LuaUsbTask task) {
-        Timber.d("Lua USB task '%s' completed", task.getName());
-        if (notificationManager_ != null)
-            notificationManager_.notify(ONGOING_NOTIFICATION_ID, getNotification(null));
-        callback_.onTaskCompleted(task);
+    private fun onTaskCompleted(task: LuaUsbTask) {
+        Timber.d("Lua USB task '%s' completed", task.name)
+        if (notificationManager != null)
+            notificationManager!!.notify(ONGOING_NOTIFICATION_ID, getNotification(null))
+        callback!!.onTaskCompleted(task)
     }
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        Timber.d("Binding Lua USB service");
-        return new Binder(this);
+    override fun onBind(intent: Intent): IBinder? {
+        Timber.d("Binding Lua USB service")
+        return Binder(this)
     }
 
-    @Override
-    public boolean onUnbind(Intent intent) {
-        Timber.d("Unbinding Lua USB service");
-        return false;
+    override fun onUnbind(intent: Intent): Boolean {
+        Timber.d("Unbinding Lua USB service")
+        return false
     }
 
-    @Override
-    public void onCreate() {
-        Timber.d("Creating Lua USB service");
-        Intent intent = new Intent(this, RootFileSystemService.class);
-        RootService.bind(intent, rootSvcConn_);
+    override fun onCreate() {
+        Timber.d("Creating Lua USB service")
+        val intent = Intent(this, RootFileSystemService::class.java)
+        RootService.bind(intent, rootSvcConn!!)
 
-        createNotificationChannel();
-        startForeground(ONGOING_NOTIFICATION_ID, getNotification(null));
-    }
+        createNotificationChannel()
 
-    @Override
-    public void onDestroy() {
-        Timber.d("Destroying Lua USB service");
-        notificationManager_ = null;
-        if (rootSvcConn_ != null) {
-            RootService.unbind(rootSvcConn_);
-            rootSvcConn_ = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceCompat.startForeground(
+                this,
+                ONGOING_NOTIFICATION_ID,
+                getNotification(null),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST
+            )
         }
-        executorService_.shutdownNow();
+    }
+
+    override fun onDestroy() {
+        Timber.d("Destroying Lua USB service")
+        notificationManager = null
+        if (rootSvcConn != null) {
+            RootService.unbind(rootSvcConn!!)
+            rootSvcConn = null
+        }
+        executorService.shutdownNow()
         try {
-            if (!executorService_.awaitTermination(5, TimeUnit.SECONDS)) {
-                throw new IllegalStateException("Lua interpreter thread hang");
+            check(executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                "Lua interpreter thread hang"
             }
-        } catch (InterruptedException ignored) {
-            throw new IllegalStateException("Executor shutdown was interrupted");
+        } catch (ignored: InterruptedException) {
+            throw IllegalStateException("Executor shutdown was interrupted")
         }
     }
 
-    private Notification getNotification(LuaUsbTask task) {
-        String contextText;
-        if (task == null) {
-            contextText = getString(R.string.service_notif_message_idle);
+    private fun getNotification(task: LuaUsbTask?): Notification {
+        val contextText = if (task == null) {
+            getString(R.string.service_notif_message_idle)
         } else {
-            contextText = getString(R.string.service_notif_message, task.getName());
+            getString(R.string.service_notif_message, task.name)
         }
-        PendingIntent contentPendingIntent = PendingIntent.getActivity(
-                this, 0, new Intent(this, MainActivity.class),
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        val contentPendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
-        Intent stopIntent = new Intent(NotificationBroadcastReceiver.ACTION_STOP);
-        stopIntent.putExtra(EXTRA_NOTIFICATION_ID, 0);
-        PendingIntent stopPendingIntent =
-                PendingIntent.getBroadcast(this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE);
+        val stopIntent = Intent(NotificationBroadcastReceiver.ACTION_STOP)
+        stopIntent.putExtra(Notification.EXTRA_NOTIFICATION_ID, 0)
+        val stopPendingIntent =
+            PendingIntent.getBroadcast(this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE)
 
-        Notification.Builder builder = new Notification.Builder(this, CHANNEL_ID)
-                .setContentTitle(getText(R.string.service_notif_title))
-                .setContentText(contextText)
-                .setSmallIcon(R.drawable.ic_baseline_usb_24)
-                .setContentIntent(contentPendingIntent);
+        val builder = Notification.Builder(this, CHANNEL_ID)
+            .setContentTitle(getText(R.string.service_notif_title)).setContentText(contextText)
+            .setSmallIcon(R.drawable.ic_baseline_usb_24).setOngoing(true)
+            .setContentIntent(contentPendingIntent)
         if (task != null) {
-            builder.addAction(new Notification.Action.Builder(
+            builder.addAction(
+                Notification.Action.Builder(
                     Icon.createWithResource(this, R.drawable.ic_baseline_usb_24),
                     getString(R.string.cancel),
-                    stopPendingIntent).build());
+                    stopPendingIntent
+                ).build()
+            )
         }
 
-        return builder.build();
+        return builder.build()
     }
 
-    private void createNotificationChannel() {
-        CharSequence name = getString(R.string.notif_channel_name);
-        String description = getString(R.string.notif_channel_description);
-        int importance = NotificationManager.IMPORTANCE_LOW;
-        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-        channel.setDescription(description);
+    private fun createNotificationChannel() {
+        val name: CharSequence = getString(R.string.notif_channel_name)
+        val description = getString(R.string.notif_channel_description)
+        val importance = NotificationManager.IMPORTANCE_LOW
+        val channel = NotificationChannel(CHANNEL_ID, name, importance)
+        channel.description = description
         // Register the channel with the system; you can't change the importance
         // or other notification behaviors after this
-        notificationManager_ = getSystemService(NotificationManager.class);
-        notificationManager_.createNotificationChannel(channel);
+        notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager!!.createNotificationChannel(channel)
+    }
+
+    companion object {
+        private val CHANNEL_ID: String = LuaUsbService::class.java.name
+        const val ONGOING_NOTIFICATION_ID: Int = 1
     }
 }

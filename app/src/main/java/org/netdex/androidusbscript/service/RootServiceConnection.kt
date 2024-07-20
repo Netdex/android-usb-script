@@ -1,30 +1,25 @@
-package org.netdex.androidusbscript.service;
+package org.netdex.androidusbscript.service
 
-import android.content.ComponentName;
-import android.content.ServiceConnection;
-import android.os.IBinder;
-import android.os.RemoteException;
+import android.content.ComponentName
+import android.content.ServiceConnection
+import android.os.IBinder
+import android.os.RemoteException
+import com.topjohnwu.superuser.nio.FileSystemManager
+import timber.log.Timber
 
-import com.topjohnwu.superuser.nio.FileSystemManager;
+open class RootServiceConnection : ServiceConnection {
+    var remoteFs: FileSystemManager? = null
+        private set
 
-public class RootServiceConnection implements ServiceConnection {
-    private FileSystemManager remoteFs_ = null;
-
-    @Override
-    public void onServiceConnected(ComponentName name, IBinder service) {
+    override fun onServiceConnected(name: ComponentName, service: IBinder) {
         try {
-            remoteFs_ = FileSystemManager.getRemote(service);
-        } catch (RemoteException e) {
-            e.printStackTrace();
+            remoteFs = FileSystemManager.getRemote(service)
+        } catch (e: RemoteException) {
+            Timber.e(e)
         }
     }
 
-    @Override
-    public void onServiceDisconnected(ComponentName name) {
-        remoteFs_ = null;
-    }
-
-    public FileSystemManager getRemoteFs() {
-        return remoteFs_;
+    override fun onServiceDisconnected(name: ComponentName) {
+        remoteFs = null
     }
 }

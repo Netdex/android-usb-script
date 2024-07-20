@@ -1,24 +1,24 @@
 ---
---- Composite device composed of two keyboards
----
+--- Composite device composed of every suupported gadget
 ---
 
 require('common')
 
-kb1, kb2 = luausb.create({ type = "keyboard" }, { type = "keyboard" })
+kb, ms, st, sl = luausb.create(
+    { type = "keyboard" },
+    { type = "mouse" },
+    { type = "storage" },
+    { type = "serial" }
+)
 
 while true do
     print("idle")
 
     wait_for_state("configured")
-    wait_for_detect(kb1)
+    wait_for_detect(kb)
     print("running")
 
-    -- send a string from keyboard 1
-    kb1:string("kb1")
     wait(1000)
-    -- send a string from keyboard 2
-    kb2:string("kb2")
 
     print("done")
     wait_for_state("not attached")

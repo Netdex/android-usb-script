@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
+import timber.log.Timber;
+
 public class SelectAssetActivity extends AppCompatActivity {
 
     public static final String SCRIPT_PATH = "scripts";
@@ -45,7 +47,7 @@ public class SelectAssetActivity extends AppCompatActivity {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            Timber.e(e);
         }
 
         LuaAssetAdapter adapter = new LuaAssetAdapter(assets) {

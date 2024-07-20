@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+import timber.log.Timber;
+
 public class LuaUsbTaskFactory {
     private final LuaIOBridge dialogIO_;
 
@@ -24,7 +26,7 @@ public class LuaUsbTaskFactory {
         try {
             return createTaskFromInputStream(name, context.getAssets().open(pathToAsset));
         } catch (IOException e) {
-            e.printStackTrace();
+            Timber.e(e);
             return null;
         }
     }
@@ -33,7 +35,7 @@ public class LuaUsbTaskFactory {
         try {
             return createTaskFromInputStream(name, context.getContentResolver().openInputStream(uri));
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            Timber.e(e);
             return null;
         }
     }
@@ -49,7 +51,7 @@ public class LuaUsbTaskFactory {
             String src = sb.toString();
             return new LuaUsbTask(name, src, dialogIO_);
         } catch (IOException e) {
-            e.printStackTrace();
+            Timber.e(e);
             return null;
         }
 

@@ -5,11 +5,12 @@ import org.netdex.androidusbscript.util.FileSystem;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.file.Path;
 
 
-public class LuaHidMouse extends DeviceStream implements Closeable {
+public class LuaHidMouse extends DeviceStream {
 
-    public LuaHidMouse(FileSystem fs, String devicePath) throws IOException {
+    public LuaHidMouse(FileSystem fs, Path devicePath) {
         super(fs, devicePath);
     }
 
